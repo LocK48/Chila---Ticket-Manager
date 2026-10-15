@@ -491,6 +491,68 @@ class BackendApplicationTests {
 	}
 
 	@Test
+	void issueKeysCanBeLookedUpAndBoardOrderCanBeChanged() throws Exception {
+		registerUser();
+		Cookie owner = loginAndGetAccessCookie();
+		String workspaceId = createWorkspaceFor(owner);
+		String projectId = createProjectFor(owner, workspaceId);
+
+		String firstId = createIssue(owner, projectId, "First issue");
+		String secondId = createIssue(owner, projectId, "Second issue");
+		String thirdId = createIssue(owner, projectId, "Third issue");
+		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/issues/ISS-2", workspaceId).cookie(owner))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.id").value(secondId))
+				.andExpect(jsonPath("$.issueKey").value("ISS-2"))
+				.andExpect(jsonPath("$.issueNumber").value(2));
+
+		mockMvc.perform(get("/api/v1/projects/{projectId}/issues", projectId)
+				.param("sort", "rank").param("direction", "asc").cookie(owner))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.items[0].id").value(firstId))
+				.andExpect(jsonPath("$.items[1].id").value(secondId))
+				.andExpect(jsonPath("$.items[2].id").value(thirdId));
+
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/issues/{id}/position", thirdId)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"status\":\"TODO\",\"beforeIssueId\":\"" + firstId + "\"}"), owner))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.issueKey").value("ISS-3"));
+		mockMvc.perform(get("/api/v1/projects/{projectId}/issues", projectId)
+				.param("sort", "rank").param("direction", "asc").cookie(owner))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.items[0].id").value(thirdId))
+				.andExpect(jsonPath("$.items[1].id").value(firstId))
+				.andExpect(jsonPath("$.items[2].id").value(secondId));
+
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/issues/{id}/position", firstId)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"status\":\"IN_PROGRESS\"}"), owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/issues/ISS-1", workspaceId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.id").value(firstId));
+
+		mockMvc.perform(registrationRequest("{\"email\":\"board-outsider@example.com\","
+				+ "\"password\":\"long-enough-password\",\"displayName\":\"Outsider\"}"))
+				.andExpect(status().isCreated());
+		Cookie outsider = loginAndGetAccessCookie("board-outsider@example.com");
+		mockMvc.perform(get("/api/v1/workspaces/{workspaceId}/issues/ISS-1", workspaceId).cookie(outsider))
+				.andExpect(status().isNotFound());
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/issues/{id}/position", secondId)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"status\":\"TODO\"}"), outsider))
+				.andExpect(status().isNotFound());
+	}
+
+	private String createIssue(Cookie owner, String projectId, String title) throws Exception {
+		MvcResult created = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{id}/issues", projectId)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"title\":\"" + title + "\",\"type\":\"TASK\"}"), owner))
+				.andExpect(status().isCreated()).andReturn();
+		return objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asText();
+	}
+
+	@Test
 	void issueAssigneeAndReadsAreRestrictedToWorkspaceMembers() throws Exception {
 		registerUser();
 		Cookie owner = loginAndGetAccessCookie();

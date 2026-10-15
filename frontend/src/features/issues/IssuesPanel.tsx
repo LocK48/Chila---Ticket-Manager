@@ -109,7 +109,7 @@ export function IssuesPanel({ projectId, members, canManage, active, projectActi
     </form>}
     {(loading || !active) && <p className="subtle issue-loading" role="status">{active ? 'Loading issues…' : 'Loading workspace access…'}</p>}
     <div className="issue-list">{active && !loading && issues.map((issue) => <article className={`issue-row${issue.archivedAt ? ' issue-archived' : ''}`} key={issue.id}>
-      <div className="issue-main"><div><span className={`status-pill issue-status-${issue.status.toLowerCase()}`}>{issue.status.replace('_', ' ').toLowerCase()}</span><span className={`priority-label priority-${issue.priority.toLowerCase()}`}>{issue.priority.toLowerCase()}</span></div><Link className="issue-title-link" to={`/workspaces/${workspaceId}/issues/${issue.id}`}>{issue.title}</Link><small>{issue.type.toLowerCase()} · {issue.assigneeName ? `Assigned to ${issue.assigneeName}` : 'Unassigned'}{issue.dueDate ? ` · Due ${issue.dueDate}` : ''}</small></div>
+      <div className="issue-main"><div><span className={`status-pill issue-status-${issue.status.toLowerCase()}`}>{issue.status.replace('_', ' ').toLowerCase()}</span><span className={`priority-label priority-${issue.priority.toLowerCase()}`}>{issue.priority.toLowerCase()}</span></div><Link className="issue-title-link" to={`/workspaces/${workspaceId}/issues/${issue.issueKey}`}>{issue.issueKey} · {issue.title}</Link><small>{issue.type.toLowerCase()} · {issue.assigneeName ? `Assigned to ${issue.assigneeName}` : 'Unassigned'}{issue.dueDate ? ` · Due ${issue.dueDate}` : ''}</small></div>
       <div className="issue-actions">{!issue.archivedAt && projectActive && <button className="text-action" onClick={() => startEdit(issue)}>Edit</button>}{canManage && (issue.archivedAt ? <button className="text-action" disabled={busy || !projectActive} onClick={() => void restore(issue)}>Restore</button> : projectActive && <button className="remove-member-button" disabled={busy} onClick={() => void archive(issue)}>Archive</button>)}</div>
       <details className="issue-detail" onToggle={(event) => {
         const opened = event.currentTarget.open
@@ -127,7 +127,7 @@ export function IssuesPanel({ projectId, members, canManage, active, projectActi
 
 function IssueOverview({ issue }: { issue: Issue }) {
   return <div className="issue-overview">
-    <div className="issue-overview-title"><span>{issue.projectKey}</span><strong>{issue.title}</strong></div>
+    <div className="issue-overview-title"><span>{issue.issueKey}</span><strong>{issue.title}</strong></div>
     <p>{issue.description || 'No description provided.'}</p>
     <dl><div><dt>Reported by</dt><dd>{issue.reporterName}</dd></div><div><dt>Assignee</dt><dd>{issue.assigneeName || 'Unassigned'}</dd></div>
       <div><dt>Type</dt><dd>{issue.type.toLowerCase()}</dd></div><div><dt>Priority</dt><dd>{issue.priority.toLowerCase()}</dd></div>

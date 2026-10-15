@@ -1,12 +1,16 @@
 package com.chila.backend.issue;
 
 import java.util.UUID;
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.chila.backend.activity.IssueActivityService;
 import com.chila.backend.common.api.InvalidInputException;
 import com.chila.backend.issue.api.CreateIssueRequest;
 import com.chila.backend.issue.api.IssuePageResponse;
 import com.chila.backend.issue.api.IssueResponse;
+import com.chila.backend.issue.api.MoveIssueRequest;
 import com.chila.backend.issue.api.UpdateIssueRequest;
 import com.chila.backend.project.ProjectEntity;
 import com.chila.backend.project.ProjectNotFoundException;
@@ -29,6 +33,8 @@ import org.springframework.util.StringUtils;
 
 @Service
 public class IssueService {
+
+    private static final long RANK_STEP = 1024;
 
     private final IssueRepository issueRepository;
     private final ProjectRepository projectRepository;
@@ -54,16 +60,18 @@ public class IssueService {
 
     @Transactional
     public IssueResponse create(UUID actorId, UUID projectId, CreateIssueRequest request) {
-        ProjectEntity project = requireProject(projectId);
+        ProjectEntity project = lockProject(projectId);
         requireWorkspaceMember(project, actorId);
         requireActiveProject(project);
         UserEntity reporter = userRepository.findById(actorId).orElseThrow(UserNotFoundException::new);
         UserEntity assignee = resolveAssignee(project, request.assigneeId());
+        IssueStatus status = request.status() == null ? IssueStatus.TODO : request.status();
+        long issueNumber = project.allocateIssueNumber();
+        long rank = nextRank(project.getId(), status);
         IssueEntity issue = issueRepository.save(new IssueEntity(project, reporter, request.title().trim(),
-                normalizeDescription(request.description()), request.type(),
-                request.status() == null ? IssueStatus.TODO : request.status(),
+                normalizeDescription(request.description()), request.type(), status,
                 request.priority() == null ? IssuePriority.MEDIUM : request.priority(),
-                assignee, request.dueDate()));
+                assignee, request.dueDate(), issueNumber, rank));
         activityService.record(issue, reporter, "CREATED", null, null, null);
         notificationService.onAssignment(issue, assignee, actorId);
         return response(issue);
@@ -103,6 +111,7 @@ public class IssueService {
             case "priority" -> "priority";
             case "status" -> "status";
             case "title" -> "title";
+            case "rank" -> "rankValue";
             default -> throw new InvalidInputException("sort", "Unsupported issue sort field.");
         };
         Page<IssueEntity> results = issueRepository.search(projectId, status, priority, type, assigneeId,
@@ -119,11 +128,26 @@ public class IssueService {
         return response(issue);
     }
 
+    @Transactional(readOnly = true)
+    public IssueResponse getByKey(UUID actorId, UUID workspaceId, String value) {
+        IssueKey key;
+        try {
+            key = IssueKey.parse(value);
+        } catch (IllegalArgumentException exception) {
+            throw new IssueNotFoundException();
+        }
+        IssueEntity issue = issueRepository.findForWorkspaceByKey(workspaceId, key.projectKey(), key.issueNumber())
+                .orElseThrow(IssueNotFoundException::new);
+        requireWorkspaceMember(issue.getProject(), actorId);
+        return response(issue);
+    }
+
     @Transactional
     public IssueResponse update(UUID actorId, UUID issueId, UpdateIssueRequest request) {
         IssueEntity issue = requireIssue(issueId);
         requireWorkspaceMember(issue.getProject(), actorId);
-        requireActiveProject(issue.getProject());
+        ProjectEntity project = lockProject(issue.getProject().getId());
+        requireActiveProject(project);
         if (issue.getArchivedAt() != null) throw new IssueArchivedException();
         UserEntity assignee = resolveAssignee(issue.getProject(), request.assigneeId());
         validateTransition(issue.getStatus(), request.status());
@@ -138,10 +162,53 @@ public class IssueService {
         recordChange(issue, actor, "dueDate", issue.getDueDate() == null ? null : issue.getDueDate().toString(),
                 request.dueDate() == null ? null : request.dueDate().toString());
         UUID previousAssigneeId = issue.getAssignee() == null ? null : issue.getAssignee().getId();
+        long rank = issue.getStatus() == request.status() ? issue.getRankValue() : nextRank(project.getId(), request.status());
         issue.update(request.title().trim(), normalizeDescription(request.description()), request.type(),
                 request.status(), request.priority(), assignee, request.dueDate());
+        issue.setRankValue(rank);
         if (assignee != null && !assignee.getId().equals(previousAssigneeId)) {
             notificationService.onAssignment(issue, assignee, actorId);
+        }
+        return response(issue);
+    }
+
+    @Transactional
+    public IssueResponse move(UUID actorId, UUID issueId, MoveIssueRequest request) {
+        IssueEntity issue = requireIssue(issueId);
+        ProjectEntity project = lockProject(issue.getProject().getId());
+        requireWorkspaceMember(project, actorId);
+        requireActiveProject(project);
+        if (issue.getArchivedAt() != null) throw new IssueArchivedException();
+        if (issue.getStatus() != request.status()) validateTransition(issue.getStatus(), request.status());
+
+        List<IssueEntity> target = new ArrayList<>(issueRepository
+                .findByProject_IdAndStatusAndArchivedAtIsNullOrderByRankValueAscIdAsc(project.getId(), request.status()));
+        target.removeIf(item -> item.getId().equals(issue.getId()));
+        int insertionIndex = target.size();
+        if (request.beforeIssueId() != null) {
+            insertionIndex = -1;
+            for (int index = 0; index < target.size(); index++) {
+                if (target.get(index).getId().equals(request.beforeIssueId())) {
+                    insertionIndex = index;
+                    break;
+                }
+            }
+            if (insertionIndex < 0) {
+                throw new InvalidInputException("beforeIssueId", "The target issue is not in this project's destination column.");
+            }
+        }
+        target.add(insertionIndex, issue);
+        long oldRank = issue.getRankValue();
+        IssueStatus oldStatus = issue.getStatus();
+        long newRank = rankAt(target, insertionIndex);
+        issue.moveTo(request.status(), newRank);
+
+        UserEntity actor = userRepository.findById(actorId).orElseThrow(UserNotFoundException::new);
+        if (oldStatus != request.status()) {
+            activityService.record(issue, actor, "UPDATED", "status", oldStatus.name(), request.status().name());
+        }
+        if (oldRank != newRank || oldStatus != request.status()) {
+            activityService.record(issue, actor, "REORDERED", "rank", Long.toString(oldRank), Long.toString(newRank));
         }
         return response(issue);
     }
@@ -168,6 +235,58 @@ public class IssueService {
 
     private ProjectEntity requireProject(UUID projectId) {
         return projectRepository.findById(projectId).orElseThrow(ProjectNotFoundException::new);
+    }
+
+    private ProjectEntity lockProject(UUID projectId) {
+        return projectRepository.findByIdForUpdate(projectId).orElseThrow(ProjectNotFoundException::new);
+    }
+
+    private long nextRank(UUID projectId, IssueStatus status) {
+        long maxRank = issueRepository.findMaxActiveRank(projectId, status);
+        if (maxRank <= Long.MAX_VALUE - RANK_STEP) return maxRank + RANK_STEP;
+        List<IssueEntity> issues = issueRepository
+                .findByProject_IdAndStatusAndArchivedAtIsNullOrderByRankValueAscIdAsc(projectId, status);
+        long rank = RANK_STEP;
+        for (IssueEntity existing : issues) {
+            existing.setRankValue(rank);
+            rank = Math.addExact(rank, RANK_STEP);
+        }
+        return rank;
+    }
+
+    private long rankAt(List<IssueEntity> ordered, int index) {
+        if (ordered.size() == 1) return RANK_STEP;
+        if (index == 0) {
+            try {
+                return Math.subtractExact(ordered.get(1).getRankValue(), RANK_STEP);
+            } catch (ArithmeticException ignored) {
+                return rebalanceAndGet(ordered, index);
+            }
+        }
+        if (index == ordered.size() - 1) {
+            try {
+                return Math.addExact(ordered.get(index - 1).getRankValue(), RANK_STEP);
+            } catch (ArithmeticException ignored) {
+                return rebalanceAndGet(ordered, index);
+            }
+        }
+        long left = ordered.get(index - 1).getRankValue();
+        long right = ordered.get(index + 1).getRankValue();
+        BigInteger gap = BigInteger.valueOf(right).subtract(BigInteger.valueOf(left));
+        if (gap.compareTo(BigInteger.ONE) > 0) {
+            return BigInteger.valueOf(left).add(gap.divide(BigInteger.TWO)).longValueExact();
+        }
+        return rebalanceAndGet(ordered, index);
+    }
+
+    private long rebalanceAndGet(List<IssueEntity> ordered, int targetIndex) {
+        long targetRank = 0;
+        for (int index = 0; index < ordered.size(); index++) {
+            long rank = Math.multiplyExact(index + 1L, RANK_STEP);
+            ordered.get(index).setRankValue(rank);
+            if (index == targetIndex) targetRank = rank;
+        }
+        return targetRank;
     }
 
     private IssueEntity requireIssue(UUID issueId) {
@@ -225,7 +344,9 @@ public class IssueService {
     private static IssueResponse response(IssueEntity issue) {
         UserEntity reporter = issue.getReporter();
         UserEntity assignee = issue.getAssignee();
-        return new IssueResponse(issue.getId(), issue.getProject().getId(), issue.getProject().getKey(),
+        String projectKey = issue.getProject().getKey();
+        return new IssueResponse(issue.getId(), issue.getProject().getId(), projectKey,
+                projectKey + "-" + issue.getIssueNumber(), issue.getIssueNumber(),
                 issue.getTitle(), issue.getDescription(), issue.getType(), issue.getStatus(), issue.getPriority(),
                 reporter.getId(), reporter.getDisplayName(), assignee == null ? null : assignee.getId(),
                 assignee == null ? null : assignee.getDisplayName(), issue.getDueDate(), issue.getArchivedAt(),

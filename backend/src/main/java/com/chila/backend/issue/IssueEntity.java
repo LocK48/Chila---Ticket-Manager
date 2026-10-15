@@ -45,6 +45,12 @@ public class IssueEntity {
     @JoinColumn(name = "assignee_id")
     private UserEntity assignee;
 
+    @Column(name = "issue_number", nullable = false, updatable = false)
+    private long issueNumber;
+
+    @Column(name = "rank_value", nullable = false)
+    private long rankValue;
+
     @Column(nullable = false, length = 200)
     private String title;
 
@@ -81,7 +87,8 @@ public class IssueEntity {
     }
 
     public IssueEntity(ProjectEntity project, UserEntity reporter, String title, String description,
-            IssueType type, IssueStatus status, IssuePriority priority, UserEntity assignee, LocalDate dueDate) {
+            IssueType type, IssueStatus status, IssuePriority priority, UserEntity assignee, LocalDate dueDate,
+            long issueNumber, long rankValue) {
         this.project = project;
         this.reporter = reporter;
         this.title = title;
@@ -91,12 +98,16 @@ public class IssueEntity {
         this.priority = priority;
         this.assignee = assignee;
         this.dueDate = dueDate;
+        this.issueNumber = issueNumber;
+        this.rankValue = rankValue;
     }
 
     public UUID getId() { return id; }
     public ProjectEntity getProject() { return project; }
     public UserEntity getReporter() { return reporter; }
     public UserEntity getAssignee() { return assignee; }
+    public long getIssueNumber() { return issueNumber; }
+    public long getRankValue() { return rankValue; }
     public String getTitle() { return title; }
     public String getDescription() { return description; }
     public IssueType getType() { return type; }
@@ -124,5 +135,14 @@ public class IssueEntity {
 
     public void restore() {
         archivedAt = null;
+    }
+
+    public void setRankValue(long rankValue) {
+        this.rankValue = rankValue;
+    }
+
+    public void moveTo(IssueStatus status, long rankValue) {
+        this.status = status;
+        this.rankValue = rankValue;
     }
 }

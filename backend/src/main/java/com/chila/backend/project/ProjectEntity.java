@@ -53,6 +53,9 @@ public class ProjectEntity {
     @Column(nullable = false, length = 16)
     private ProjectStatus status = ProjectStatus.ACTIVE;
 
+    @Column(name = "next_issue_number", nullable = false)
+    private long nextIssueNumber = 1;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -80,6 +83,10 @@ public class ProjectEntity {
     public String getKey() { return key; }
     public String getDescription() { return description; }
     public ProjectStatus getStatus() { return status; }
+    public long allocateIssueNumber() {
+        if (nextIssueNumber == Long.MAX_VALUE) throw new IllegalStateException("Project issue number space is exhausted.");
+        return nextIssueNumber++;
+    }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 

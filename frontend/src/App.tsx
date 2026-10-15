@@ -8,7 +8,7 @@ import { LoginPage, RegisterPage } from './pages/EntryPages'
 import { MembersPage } from './pages/MembersPage'
 import { OverviewPage } from './pages/OverviewPage'
 import { ProfilePage } from './pages/ProfilePage'
-import { ProjectDetailsPage, ProjectIssuesTab, ProjectOverviewTab, ProjectSettingsTab } from './pages/ProjectDetailsPage'
+import { ProjectBoardTab, ProjectDetailsPage, ProjectIssuesTab, ProjectOverviewTab, ProjectSettingsTab } from './pages/ProjectDetailsPage'
 import { ProjectsPage } from './pages/ProjectsPage'
 import { WorkspaceIssuesPage } from './pages/WorkspaceIssuesPage'
 import { WorkspaceRedirect } from './pages/WorkspaceRedirect'
@@ -47,11 +47,12 @@ function AppRoutes() {
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="projects/:projectId" element={<ProjectDetailsPage />}>
             <Route index element={<ProjectIssuesTab />} />
+            <Route path="board" element={<ProjectBoardTab />} />
             <Route path="overview" element={<ProjectOverviewTab />} />
             <Route path="settings" element={<ProjectSettingsTab />} />
           </Route>
           <Route path="issues" element={<WorkspaceIssuesPage />} />
-          <Route path="issues/:issueId" element={<IssueDetailsPage />} />
+          <Route path="issues/:issueReference" element={<IssueDetailsPage />} />
           <Route path="my-issues" element={<WorkspaceIssuesPage mine />} />
           <Route path="members" element={<MembersPage />} />
           <Route path="settings" element={<WorkspaceSettingsPage />} />

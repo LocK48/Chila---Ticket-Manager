@@ -1,6 +1,8 @@
 package com.chila.backend.issue;
 
 import java.util.UUID;
+import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,7 +21,8 @@ public interface IssueRepository extends JpaRepository<IssueEntity, UUID> {
             + "and (:assigneeId is null or i.assignee.id = :assigneeId) "
             + "and (:unassigned = false or i.assignee is null) "
             + "and (:search = '%' or lower(i.title) like :search "
-            + "or lower(coalesce(i.description, '')) like :search) "
+            + "or lower(coalesce(i.description, '')) like :search "
+            + "or lower(concat(concat(p.key, '-'), cast(i.issueNumber as string))) like :search) "
             + "and (:includeArchived = true or i.archivedAt is null)",
             countQuery = "select count(i) from IssueEntity i join i.project p where p.id = :projectId "
                     + "and (:status is null or i.status = :status) "
@@ -28,7 +31,8 @@ public interface IssueRepository extends JpaRepository<IssueEntity, UUID> {
                     + "and (:assigneeId is null or i.assignee.id = :assigneeId) "
                     + "and (:unassigned = false or i.assignee is null) "
                     + "and (:search = '%' or lower(i.title) like :search "
-                    + "or lower(coalesce(i.description, '')) like :search) "
+                    + "or lower(coalesce(i.description, '')) like :search "
+                    + "or lower(concat(concat(p.key, '-'), cast(i.issueNumber as string))) like :search) "
                     + "and (:includeArchived = true or i.archivedAt is null)")
     Page<IssueEntity> search(
             @Param("projectId") UUID projectId,
@@ -40,4 +44,19 @@ public interface IssueRepository extends JpaRepository<IssueEntity, UUID> {
             @Param("search") String search,
             @Param("includeArchived") boolean includeArchived,
             Pageable pageable);
+
+    @Query("select i from IssueEntity i join fetch i.project p join fetch p.workspace "
+            + "join fetch i.reporter left join fetch i.assignee "
+            + "where p.workspace.id = :workspaceId and p.key = :projectKey and i.issueNumber = :issueNumber")
+    Optional<IssueEntity> findForWorkspaceByKey(
+            @Param("workspaceId") UUID workspaceId,
+            @Param("projectKey") String projectKey,
+            @Param("issueNumber") long issueNumber);
+
+    List<IssueEntity> findByProject_IdAndStatusAndArchivedAtIsNullOrderByRankValueAscIdAsc(
+            UUID projectId, IssueStatus status);
+
+    @Query("select coalesce(max(i.rankValue), 0) from IssueEntity i "
+            + "where i.project.id = :projectId and i.status = :status and i.archivedAt is null")
+    long findMaxActiveRank(@Param("projectId") UUID projectId, @Param("status") IssueStatus status);
 }

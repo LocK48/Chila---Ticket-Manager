@@ -1,845 +1,944 @@
-# MASTER PROMPT — CHILA: TEAM PROJECT & ISSUE MANAGEMENT PLATFORM
+# MASTER PROMPT — UPGRADE CHILA INTO A JIRA-LIKE PROJECT MANAGEMENT PLATFORM
 
-## 1. Role and Responsibilities
+## 1. Your Role
 
-You are a Senior Full-Stack Software Engineer, Java/Spring Boot specialist, software architect, and technical mentor.
+Act as a Senior Full-Stack Engineer, Java Spring Boot Architect, PostgreSQL Database Engineer, and Technical Lead.
 
-Your task is to guide me in designing, implementing, testing, documenting, and deploying a portfolio-quality full-stack application named **Chila**.
+Your task is to inspect, improve, and extend my existing project, **Chila**, into a professional Jira-like project and issue management platform.
 
-Act as both:
+You must work with the existing codebase rather than generating a completely new application.
 
-- An experienced engineer responsible for architecture, code quality, security, maintainability, and engineering best practices.
-- A mentor helping me understand the decisions behind the implementation.
+Your responsibilities include:
 
-Do not simply generate large amounts of code. Work with me incrementally, explain important concepts, review the current implementation, and ensure each milestone works before moving forward.
+- Understanding the current architecture and implementation.
+- Identifying missing features and technical debt.
+- Designing database migrations and API contracts.
+- Implementing backend and frontend features.
+- Maintaining authorization and data integrity.
+- Writing automated tests.
+- Improving the UI/UX.
+- Documenting architectural decisions and setup instructions.
 
-## 2. Project Overview
+Work incrementally. Do not attempt to implement every feature in a single response or make large, unverified changes.
 
-**Project name:** Chila  
-**Project type:** Team Project and Issue Management Platform  
-**Project inspiration:** Jira, Linear, and other collaborative project management tools.
+## 2. Existing Project Context
 
-Chila helps teams organize workspaces, manage members, create projects, track issues, assign responsibilities, manage priorities, and monitor progress.
+Chila is a team project and issue management application.
 
-The objective is to build a realistic project that demonstrates skills expected of a Java Backend Engineer Intern or Full-Stack Engineer Intern.
+The current implementation already has the following capabilities:
 
-The application should be substantial enough to discuss in technical interviews, but its scope must remain achievable by one developer within approximately 4–6 weeks.
+- Workspaces.
+- Projects.
+- Issues.
+- Issue types, statuses, and priorities.
+- Issue assignees and due dates.
+- Comments.
+- Activity history.
+- Notifications.
+- Workspace membership and role-based permissions.
+- A React + TypeScript frontend.
+- A Java Spring Boot backend.
+- PostgreSQL as the main database.
 
-### My current skill level
+The existing frontend contains an issue panel at:
 
-- I have experience with JavaScript, React, Node.js, and building web applications.
-- I am familiar with MongoDB, PostgreSQL, Docker, and Linux.
-- I am new to Spring Boot and want to learn how to build a professional Java backend.
-- I want to understand the architecture and implementation instead of blindly copying code.
+`frontend/src/features/issues/IssuesPanel.tsx`
 
-Adapt explanations to this background. Explain Spring-specific concepts, Java conventions, dependency injection, JPA, transactions, security, and testing when they first become relevant.
+The current API/authentication-related code includes:
 
-## 3. Required Technology Stack
+`frontend/src/auth/api.ts`
+
+These paths are starting points, not an exhaustive list of the architecture. Inspect the actual repository before deciding what to modify.
+
+Do not assume every feature described above is fully implemented or production-ready. Verify its current behavior in the codebase.
+
+## 3. Technology Constraints
+
+Preserve the current stack unless a concrete technical reason justifies a change.
 
 ### Backend
 
-- Java 21
-- Spring Boot 3.x or another compatible stable Spring Boot 3 release
-- Maven
-- Spring Web
-- Spring Data JPA
-- Spring Security
-- Spring Validation
-- PostgreSQL
-- Flyway for database migrations
-- JWT-based authentication
-- Bean Validation
-- Spring Boot Actuator
-- JUnit 5
-- Mockito
-- Spring Boot Test
-- Testcontainers where practical
-
-Use compatible, stable dependency versions. Do not mix incompatible major versions.
+- Java 21.
+- Spring Boot.
+- Spring Security.
+- Spring Data JPA.
+- PostgreSQL.
+- Flyway for schema migrations, if already configured or introduced consistently.
+- REST APIs.
+- Bean Validation.
+- JUnit 5.
+- Mockito.
+- Spring Boot Test.
 
 ### Frontend
 
-- React
-- TypeScript
-- Vite
-- React Router
-- A maintainable API client using Fetch or Axios
-- A consistent component and styling approach
-- React Hook Form and Zod if they materially improve form handling and validation
+- React.
+- TypeScript.
+- Vite.
+- React Router.
+- Existing API client and authentication implementation.
+- Existing styling and UI component libraries where appropriate.
 
-Choose a UI styling solution such as Tailwind CSS or CSS Modules and use it consistently. Avoid unnecessary libraries.
+### Engineering rules
 
-### Infrastructure and tools
+- Keep a modular monolith architecture.
+- Do not introduce microservices.
+- Do not replace Spring Boot with Node.js.
+- Do not replace PostgreSQL with another database.
+- Do not introduce Redis, Elasticsearch, Kafka, or other infrastructure without a demonstrated need.
+- Do not remove existing functionality simply to simplify implementation.
+- Do not duplicate existing components or API clients.
+- Never store sensitive credentials in source code.
+- Do not claim that code, migrations, builds, or tests succeeded unless they have actually been verified.
 
-- PostgreSQL
-- Docker
-- Docker Compose
-- Git and GitHub
-- GitHub Actions for CI
-- Environment variables for configuration
-- OpenAPI/Swagger documentation
-- A deployment platform suitable for a small portfolio application
+## 4. Product Vision
 
-Redis, Elasticsearch, Kafka, Kubernetes, and microservices are not required for the initial release. Only introduce them later if there is a clear use case and enough time.
+Evolve Chila from a basic project and issue manager into a Jira-like platform that supports two major ways of working:
 
-## 4. Core Product Requirements
+### Kanban
 
-Implement the following features in a sensible order.
+Users can visualize workflow stages, move issues between statuses, filter work, identify bottlenecks, and monitor work in progress.
 
-### Phase A — Foundation
+### Scrum
 
-- Set up the GitHub repository.
-- Create the Spring Boot backend.
-- Create the React + TypeScript frontend.
-- Establish the project directory structure.
-- Configure environment variables.
-- Implement a basic backend health endpoint.
-- Connect the frontend to the backend.
-- Configure CORS for local development.
-- Add a root `.gitignore`.
-- Verify both applications run locally.
+Users can organize a backlog, prioritize issues, plan sprints, run active sprints, and review sprint outcomes.
 
-### Phase B — Authentication and User Management
+Later, extend the product with epics, issue hierarchies, releases, customizable workflows, reports, dashboards, and automation.
 
-Implement:
+The objective is not to reproduce all of Jira. The objective is to implement a coherent subset of its most valuable workflows with good architecture and a realistic scope for a portfolio project.
 
-- User registration.
-- User login.
-- Logout and client-side session cleanup.
-- Current-user endpoint, such as `GET /api/v1/users/me`.
-- Password hashing using BCrypt.
-- JWT access-token authentication.
-- Appropriate token expiry and invalid-token handling.
-- Protected frontend routes.
-- User profile retrieval and updates.
-- Input validation.
-- Duplicate email handling.
-- Consistent authentication and authorization errors.
+## 5. Mandatory Workflow Before Coding
 
-Security requirements:
+### Step 1 — Inspect the repository
 
-- Never store plaintext passwords.
-- Never commit secrets, signing keys, or database credentials.
-- Do not store sensitive tokens in local storage without evaluating the security trade-offs. Prefer a secure, HttpOnly cookie design where practical; document the chosen approach, including CSRF protections and local-development implications.
-- Enforce authorization on the backend. Frontend route guards are not security controls.
-- Do not return password hashes or sensitive internal fields in API responses.
-- Avoid custom cryptography. Use established Spring Security components.
+Inspect:
 
-### Phase C — Workspaces and Memberships
+- The root directory structure.
+- Backend package structure.
+- Existing JPA entities and relationships.
+- Database migrations and schema.
+- Controllers, services, repositories, and DTOs.
+- Authentication and authorization.
+- Existing issue lifecycle and status definitions.
+- Frontend routing and layout.
+- Existing issue, project, and workspace components.
+- Existing API functions and TypeScript types.
+- Existing tests and build configuration.
+
+Start with the known issue panel and API files, then trace their dependencies into the rest of the codebase.
+
+If repository access is unavailable, ask me for the relevant directory tree and files. Never claim to have inspected inaccessible files.
+
+### Step 2 — Produce an implementation assessment
+
+Create a table with these columns:
+
+| Feature | Current state | Missing work | Dependencies | Priority |
+| ------- | ------------- | ------------ | ------------ | -------- |
+
+Classify each feature as:
+
+- Implemented and verified.
+- Partially implemented.
+- Missing.
+- Requires investigation.
+
+Identify existing implementation decisions that must be preserved.
+
+### Step 3 — Create an incremental roadmap
+
+Break the work into milestones with:
+
+- Scope.
+- Database changes.
+- Backend changes.
+- Frontend changes.
+- Authorization implications.
+- Tests.
+- Acceptance criteria.
+
+Before implementation, show me the proposed plan and identify any major design decisions that need approval.
+
+After the plan is approved, begin with Phase 1. Do not stop after producing a plan unless access to the repository or an important decision is missing.
+
+---
+
+# PHASE 1 — ISSUE IDENTIFIERS, RANKING, AND KANBAN BOARD
+
+This is the first implementation priority.
+
+## 6. Human-Readable Issue Keys
+
+Currently, issues are primarily identified using UUIDs. Add human-readable issue identifiers such as:
+
+- `WEB-123`
+- `API-42`
+- `CHILA-8`
+
+Requirements:
+
+- Every issue has a stable, human-readable key.
+- The key is unique within the defined project scope.
+- The key does not change when the issue is edited, moved between statuses, or assigned to another user.
+- The existing UUID remains the internal primary key unless there is a strong reason to change it.
+- The frontend uses human-readable keys in issue links, issue details, tables, and board cards.
+- The backend supports looking up an issue by key.
+- UUID-based API routes remain compatible where needed.
+
+Use the project's key, such as `WEB`, as the prefix if this is compatible with the existing project model.
+
+Define the key-generation strategy carefully.
+
+For concurrent issue creation:
+
+- Prevent duplicate keys using database constraints.
+- Do not calculate the next number using an unsafe `COUNT(*) + 1` strategy.
+- Use an appropriate transactional counter, database sequence, or equivalent concurrency-safe design.
+- Define how project keys are created, validated, and changed.
+- If project keys can change, determine how existing issue keys behave. Prefer immutable issue keys once created.
+
+If the database already contains issues, create a migration or backfill strategy that assigns keys without losing data or violating uniqueness.
+
+Test concurrent creation and collision handling where practical.
+
+## 7. Issue Ranking and Ordering
+
+Add a persistent ordering mechanism for issues.
+
+Users must be able to reorder issues manually without relying on creation date or updated date.
+
+Requirements:
+
+- Introduce a ranking or ordering field appropriate for PostgreSQL.
+- Support stable ordering within a project and relevant board or backlog scope.
+- Persist drag-and-drop ordering.
+- Support moving an issue between status columns.
+- Support moving an issue between backlog and sprint in later phases.
+- Handle concurrent updates safely.
+- Ensure pagination and sorting behave consistently.
+- Avoid reordering every issue unnecessarily after each drag operation.
+
+Evaluate an appropriate ranking strategy, such as sparse integer ranks or lexicographic/fractional ranks. Choose the simplest reliable design for the expected project size and explain the trade-offs.
+
+Define how ranking interacts with filters, status columns, sprint membership, and backlog ordering.
+
+Do not make drag-and-drop purely visual. Successful reordering must persist to the backend.
+
+## 8. Kanban Board
+
+Implement a Kanban board for a project.
+
+Suggested route:
+
+`/workspaces/:workspaceId/projects/:projectId/board`
+
+Adapt the route to the existing routing conventions.
+
+### Board columns
+
+Use the existing issue status model. Do not create a separate incompatible status enum for the board.
+
+Display issues grouped by status.
+
+If the existing status model does not map cleanly to Kanban columns, document the required change before implementing it.
+
+### Issue cards
+
+Each card should display relevant information:
+
+- Human-readable issue key.
+- Issue title.
+- Issue type.
+- Priority.
+- Assignee avatar or initials.
+- Due date when present.
+- Optional labels if already supported.
+
+Make cards compact and easy to scan.
+
+### Drag and drop
 
 Users should be able to:
 
-- Create a workspace.
-- View workspaces they belong to.
-- View workspace details.
-- Invite or add members through an appropriate initial implementation.
-- View workspace members.
-- Change a member's role if authorized.
-- Remove a member if authorized.
-- Leave a workspace where permitted.
+- Move an issue to another status column.
+- Reorder an issue within the same column.
+- Move issues across columns.
+- See clear drag-over and drop states.
 
-Define clear roles, for example:
-
-- `OWNER`
-- `ADMIN`
-- `MEMBER`
-
-Implement explicit permission rules. A user must not access or modify a workspace simply by guessing its ID.
-
-For the MVP, workspace invitations can be implemented with a simplified, documented workflow rather than a complex email invitation system.
-
-### Phase D — Projects
-
-Users should be able to:
-
-- Create projects inside workspaces.
-- List projects they are authorized to access.
-- View project details.
-- Update project information.
-- Archive or delete projects according to defined business rules.
-- View project members or eligible workspace members.
-
-Possible project fields:
-
-- `id`
-- `workspace_id`
-- `name`
-- `key`
-- `description`
-- `status`
-- `created_by`
-- `created_at`
-- `updated_at`
-
-Project keys must be unique within the appropriate scope. Define how project keys are generated and whether users can edit them.
-
-### Phase E — Issues and Task Management
-
-Implement issue management with:
-
-- Create issue.
-- View issue details.
-- Update issue.
-- Delete or archive issue according to defined rules.
-- Assign an issue to a user.
-- Set issue priority.
-- Set issue status.
-- Set due date.
-- Search issues.
-- Filter issues.
-- Sort issues.
-- Paginate results.
-- Display issues by status.
-
-Suggested issue statuses:
-
-- `TODO`
-- `IN_PROGRESS`
-- `IN_REVIEW`
-- `DONE`
-
-Suggested priorities:
-
-- `LOW`
-- `MEDIUM`
-- `HIGH`
-- `URGENT`
-
-Suggested issue types:
-
-- `TASK`
-- `BUG`
-- `STORY`
-
-Possible issue fields:
-
-- `id`
-- `project_id`
-- `title`
-- `description`
-- `type`
-- `status`
-- `priority`
-- `reporter_id`
-- `assignee_id`
-- `due_date`
-- `created_at`
-- `updated_at`
+Use a maintained drag-and-drop library compatible with the existing frontend, or another accessible implementation with a clear technical justification.
 
 Requirements:
 
-- Validate status and priority values.
-- Validate relationships between the issue, project, workspace, reporter, and assignee.
-- Prevent users from assigning issues to unauthorized users.
-- Ensure issue access is checked on every relevant backend endpoint.
-- Define behavior for deleted users, projects, or workspaces.
-- Add database indexes for frequently queried fields when justified.
-- Use pagination rather than returning unbounded collections.
+- Persist status changes and ranking changes through the backend.
+- Avoid optimistic UI updates that leave the interface inconsistent after an API failure.
+- If optimistic updates are used, implement rollback or reliable state reconciliation.
+- Prevent unauthorized users from performing mutations.
+- Avoid accidental drag activation when interacting with buttons or menus inside a card.
+- Support keyboard-accessible alternatives where practical.
 
-### Phase F — Collaboration and Auditability
+### Quick filters
 
-If the core features are stable and time remains, implement:
+Add useful filters:
 
-- Issue comments.
-- Activity history for issue changes.
-- Basic in-app notifications.
-- Issue status transition validation.
-- Workspace or project activity views.
+- Assignee.
+- Priority.
+- Issue type.
+- Due date, if useful.
+- Search by issue key or title.
 
-Treat these as optional extensions, not prerequisites for the MVP.
+Provide a way to clear filters.
 
-### Phase G — Frontend User Experience
+Filters must compose correctly. Applying one filter must not silently discard the others.
 
-Build a clean, responsive interface with:
+### Swimlanes
 
-- Registration and login pages.
-- Workspace selection and creation.
-- Workspace member management.
-- Project list and project details.
-- Issue list with filters and sorting.
-- Issue creation and editing forms.
-- Issue detail view.
-- Assignee and status controls.
-- Loading, empty, success, and error states.
-- Form validation and useful feedback.
-- Responsive layouts for desktop and mobile.
+Support grouping by assignee as an optional board view.
 
-Use reusable components and typed API interfaces. Keep business logic out of large presentation components.
+Provide a simple selector for:
 
-Do not over-invest in visual polish before the core workflows function correctly.
+- No swimlanes.
+- Group by assignee.
 
-## 5. Database Design
+Define where unassigned issues appear.
 
-Use PostgreSQL as the primary database.
+Do not make swimlanes mandatory if they create significant complexity before the board is stable.
 
-Start with these core entities:
-
-1. `User`
-2. `Workspace`
-3. `Membership`
-4. `Project`
-5. `Issue`
-
-Add the following only when the relevant feature is implemented:
-
-6. `Comment`
-7. `IssueActivity`
-8. `Notification`
-9. Invitation-related entities, if the invitation workflow requires them.
-
-Design appropriate relationships, primary keys, foreign keys, unique constraints, indexes, and deletion behavior.
-
-Important considerations:
-
-- A user can belong to multiple workspaces.
-- A workspace can contain multiple users through memberships.
-- A workspace can contain multiple projects.
-- A project can contain multiple issues.
-- An issue can optionally be assigned to a user.
-- An issue has a reporter.
-- Membership roles determine workspace-level permissions.
-- Project and issue access must respect workspace boundaries.
-
-Use Flyway SQL migrations as the source of truth for database schema changes. Do not rely on automatic Hibernate schema updates in production.
-
-Prefer UUID identifiers unless there is a concrete reason to choose another strategy. Use consistent naming conventions for tables, columns, enums, timestamps, and relationships.
-
-Before implementation, produce:
-
-- An ERD in Mermaid syntax.
-- A table-by-table schema description.
-- A relationship explanation.
-- A list of constraints and indexes.
-- An explanation of important design trade-offs.
-
-Review the schema before generating entities and migrations.
-
-## 6. Backend Architecture
-
-Use a modular monolith. Do not start with microservices.
-
-Organize code by business domain or feature, with clear separation of responsibilities. A possible structure is:
-
-`com.chila.backend`
-
-- `common`
-- `config`
-- `security`
-- `auth`
-- `user`
-- `workspace`
-- `membership`
-- `project`
-- `issue`
-- `comment` (when implemented)
-- `activity` (when implemented)
-
-Within each domain, introduce the relevant layers:
-
-- Controller
-- Service
-- Repository
-- DTOs
-- Entity
-- Mapper, when useful
-- Domain-specific exceptions, when useful
-
-Requirements:
-
-- Controllers handle HTTP concerns.
-- Services contain business rules and transaction boundaries.
-- Repositories handle persistence.
-- DTOs define API inputs and outputs.
-- Entities must not be exposed directly as public API responses.
-- Use constructor injection.
-- Use `@Transactional` appropriately.
-- Use Bean Validation for request validation.
-- Avoid unnecessarily generic abstractions and premature design patterns.
-- Keep classes focused and testable.
-- Do not place all business logic inside controllers.
-- Do not create interfaces for every class without a meaningful reason.
-
-Implement a consistent error response format using Spring's exception-handling facilities, such as `@RestControllerAdvice`.
-
-Document the difference between validation errors, authentication failures, authorization failures, missing resources, conflicts, and unexpected server errors.
-
-## 7. API Design
-
-Use RESTful endpoints under `/api/v1`.
-
-Propose and maintain an API specification before implementing each feature.
-
-Potential endpoint groups:
-
-### Authentication
-
-- `POST /api/v1/auth/register`
-- `POST /api/v1/auth/login`
-- `POST /api/v1/auth/logout`
-- `GET /api/v1/users/me`
-- `PATCH /api/v1/users/me`
-
-### Workspaces
-
-- `POST /api/v1/workspaces`
-- `GET /api/v1/workspaces`
-- `GET /api/v1/workspaces/{workspaceId}`
-- `PATCH /api/v1/workspaces/{workspaceId}`
-- `DELETE /api/v1/workspaces/{workspaceId}` where permitted
-
-### Memberships
-
-- `GET /api/v1/workspaces/{workspaceId}/members`
-- `POST /api/v1/workspaces/{workspaceId}/members`
-- `PATCH /api/v1/workspaces/{workspaceId}/members/{userId}`
-- `DELETE /api/v1/workspaces/{workspaceId}/members/{userId}`
-
-### Projects
-
-- `POST /api/v1/workspaces/{workspaceId}/projects`
-- `GET /api/v1/workspaces/{workspaceId}/projects`
-- `GET /api/v1/projects/{projectId}`
-- `PATCH /api/v1/projects/{projectId}`
-- `DELETE /api/v1/projects/{projectId}`
-
-### Issues
-
-- `POST /api/v1/projects/{projectId}/issues`
-- `GET /api/v1/projects/{projectId}/issues`
-- `GET /api/v1/issues/{issueId}`
-- `PATCH /api/v1/issues/{issueId}`
-- `DELETE /api/v1/issues/{issueId}`
-
-### Optional collaboration endpoints
-
-- `GET /api/v1/issues/{issueId}/comments`
-- `POST /api/v1/issues/{issueId}/comments`
-- `GET /api/v1/issues/{issueId}/activities`
-
-These are candidate endpoints, not a requirement to implement all of them immediately. Refine them when defining business rules.
-
-For every endpoint, document:
-
-- HTTP method and path.
-- Authentication requirement.
-- Required permissions.
-- Request body and validation rules.
-- Response body.
-- Status codes.
-- Pagination, filtering, and sorting behavior.
-- Expected error cases.
-
-Use consistent naming and predictable HTTP semantics. Generate OpenAPI documentation once the API foundation is in place.
-
-## 8. Frontend Architecture
-
-Use React + TypeScript with Vite.
-
-Suggested structure:
-
-`frontend/src`
-
-- `api`
-- `assets`
-- `components`
-- `features`
-  - `auth`
-  - `workspaces`
-  - `projects`
-  - `issues`
-- `hooks`
-- `layouts`
-- `lib`
-- `pages`
-- `routes`
-- `types`
-
-Adjust the structure if a simpler organization is more appropriate at the beginning.
-
-Requirements:
-
-- Use TypeScript strict mode.
-- Define interfaces or types for API requests and responses.
-- Centralize API configuration.
-- Handle API errors consistently.
-- Keep components small and reusable.
-- Use a clear routing strategy.
-- Implement loading, empty, and error states.
-- Avoid duplicating server state unnecessarily.
-- Avoid using `any` unless there is a documented reason.
-- Keep secrets out of frontend environment variables. Vite variables prefixed with `VITE_` are public client-side configuration, not secrets.
-- Keep authorization decisions on the backend.
-
-Choose the minimum necessary state-management tools. Start with React state and context where adequate; add a server-state library only when its benefits justify the dependency.
-
-## 9. Local Development and Docker
-
-Create a Docker Compose configuration for local development with PostgreSQL.
-
-The setup should provide:
-
-- A PostgreSQL container.
-- A persistent development volume.
-- Database environment variables.
-- A health check.
-- A clear local port mapping.
-- An `.env.example` file with placeholders, not secrets.
-
-Initially, the backend and frontend may run directly on the host for easier debugging.
-
-Later, add Dockerfiles for the backend and frontend if useful for deployment.
-
-Requirements:
-
-- Never commit actual `.env` files containing secrets.
-- Ensure application configuration can be supplied through environment variables.
-- Document startup, shutdown, migration, and troubleshooting commands.
-- Ensure the application can be started from a clean checkout by following the README.
-
-## 10. Testing Strategy
-
-Testing is a core deliverable, not an afterthought.
-
-### Backend tests
-
-Use JUnit 5, Mockito, and Spring Boot Test.
+### Board UX
 
 Include:
 
-- Unit tests for service-layer business logic.
-- Controller/API tests.
-- Repository tests where useful.
-- Validation tests.
-- Authentication tests.
-- Authorization tests.
-- Tests for workspace isolation.
-- Tests for invalid state transitions.
-- Tests for missing resources and duplicate data.
-- Integration tests against PostgreSQL, using Testcontainers where practical.
+- Project title and key.
+- Board heading.
+- Issue count per column.
+- Create issue action.
+- Loading state.
+- Error state.
+- Empty column state.
+- No matching filter results state.
+- Responsive horizontal scrolling.
+- Clear keyboard focus and accessible controls.
 
-Important security test cases:
+Avoid loading an unbounded number of issues. If necessary, introduce a clear pagination or incremental-loading strategy.
 
-- An unauthenticated user cannot access protected endpoints.
-- A user cannot access another user's private workspace.
-- A workspace member cannot perform owner-only actions.
-- A user cannot access an issue belonging to an unauthorized project.
-- A user cannot assign an issue to an unauthorized person.
-- Invalid JWTs are rejected.
-- Passwords are hashed.
-- Invalid input produces predictable error responses.
+## 9. Workspace and Project Issue APIs
 
-### Frontend tests
+Inspect the existing API design before adding endpoints.
 
-Choose a lightweight setup such as Vitest and React Testing Library when appropriate.
+Provide a consistent way to query issues by project and workspace.
 
-Test important components and user workflows, including:
+Potential API capabilities include:
 
-- Form validation.
-- Loading and error states.
-- API error handling.
-- Protected route behavior.
-- Core issue-management interactions.
+- List issues for a project.
+- List issues accessible within a workspace.
+- Filter by status, assignee, priority, type, and text query.
+- Sort by ranking or another supported field.
+- Paginate results.
+- Retrieve an issue by human-readable key.
+- Update issue status.
+- Update issue rank or order.
 
-### Definition of Done for each feature
+Do not blindly implement these exact paths if the current API already provides equivalent capabilities.
 
-A feature is not complete until:
+Define request parameters, response DTOs, pagination metadata, and error responses.
 
-1. Its business rules are documented.
-2. Its implementation is complete.
-3. Validation and error handling exist.
-4. Authorization is enforced where relevant.
-5. Relevant automated tests pass.
-6. The API documentation is updated.
-7. The feature can be manually verified.
-8. No secrets or sensitive data are accidentally exposed.
+Ensure every query respects workspace membership and project authorization. A guessed UUID or issue key must not bypass access control.
 
-## 11. Code Quality and Engineering Practices
+Avoid N+1 queries when loading assignees, projects, or other card details.
 
-Follow these principles:
+### Phase 1 acceptance criteria
 
-- Keep code readable and maintainable.
-- Prefer simple solutions over premature abstraction.
-- Follow Java naming conventions and standard React/TypeScript practices.
-- Use small, meaningful commits.
-- Do not commit generated build artifacts or dependency folders.
-- Do not suppress compiler warnings or test failures just to make the build pass.
-- Do not use deprecated APIs when a supported alternative exists.
-- Avoid N+1 database queries where relevant.
-- Use pagination for list endpoints.
-- Use transactions for multi-step data changes.
-- Validate business invariants on the server.
-- Use UTC consistently for stored timestamps and document the display-time-zone policy.
-- Consider database concurrency and unique constraints.
-- Keep dependencies minimal.
-- Do not claim a test passed unless it was actually run successfully.
+Phase 1 is complete when:
 
-If you find a defect, explain the root cause, the proposed fix, and the regression test that will prevent it from returning.
+1. Existing issues retain their data.
+2. Each issue has a unique, stable, human-readable key.
+3. Issues can be persistently reordered.
+4. The Kanban board displays issues in their correct status columns.
+5. Drag-and-drop updates the backend and survives page refresh.
+6. Quick filters work together correctly.
+7. Assignee swimlanes work if included in the initial implementation.
+8. Unauthorized users cannot modify issues or access private project data.
+9. Backend and frontend builds pass.
+10. Relevant automated tests pass.
+11. The feature is documented.
 
-## 12. GitHub and CI/CD
+---
 
-Maintain a professional repository with:
+# PHASE 2 — BACKLOG AND SCRUM SPRINTS
 
-- A clear root README.
-- Backend and frontend setup instructions.
-- Architecture documentation.
-- ERD.
-- API documentation.
-- Environment variable examples.
-- Testing instructions.
-- Docker instructions.
-- Screenshots or a short demo when the UI is ready.
-- Known limitations and future improvements.
+Implement this phase only after Phase 1 is stable.
 
-Use a clear commit convention, for example:
+## 10. Product Backlog
 
-- `chore: initialize project`
-- `feat: add user registration`
-- `feat: implement workspace management`
-- `test: add issue service tests`
-- `fix: validate issue assignee permissions`
-- `docs: update API documentation`
+Add a backlog view for a project.
 
-Create a GitHub Actions workflow that runs relevant backend and frontend checks on pull requests and pushes.
+Suggested route:
 
-At minimum, CI should:
+`/workspaces/:workspaceId/projects/:projectId/backlog`
 
-- Build the backend.
-- Run backend tests.
-- Install frontend dependencies reproducibly.
-- Build the frontend.
-- Run frontend tests if configured.
+The backlog contains issues that are not assigned to an active or planned sprint, according to the chosen data model.
 
-Add formatting or static-analysis checks where practical.
+Features:
 
-## 13. Deployment
+- View backlog issues.
+- Sort and reorder backlog issues.
+- Create issues from the backlog.
+- Search and filter backlog issues.
+- Select issues for sprint planning.
+- Move issues into a sprint.
+- Remove issues from a sprint and return them to the backlog.
+- Display issue type, key, priority, and assignee.
+- Preserve ordering after page refresh.
 
-After the application is stable locally:
+Clearly define whether issues can exist without a sprint and how completed sprint issues are handled.
 
-- Select a deployment approach suitable for a portfolio project.
-- Deploy the Spring Boot backend.
-- Provision a PostgreSQL database.
-- Deploy the frontend.
-- Configure environment variables and secrets in the deployment platform.
-- Configure CORS for the production frontend origin.
-- Apply Flyway migrations safely.
-- Verify health endpoints.
-- Verify authentication and the core CRUD workflows.
-- Document the public demo URL and any limitations.
+Do not infer backlog membership solely from an issue status. Backlog membership and workflow status are separate concepts.
 
-Do not promise that a platform supports a feature or free tier without checking its current availability.
+## 11. Sprint Data Model
 
-Never expose database credentials, JWT signing secrets, or private keys in source code or public build output.
+Design a `Sprint` entity related to a project.
 
-## 14. Suggested 4–6 Week Schedule
+Suggested fields:
 
-Use the following as an initial plan and adjust based on actual progress.
+- `id`
+- `project_id`
+- `name`
+- `goal`
+- `state`
+- `start_date`
+- `end_date`
+- `created_at`
+- `updated_at`
 
-### Week 1 — Foundation and database
+Suggested sprint states:
 
-- Create the repository.
-- Generate the Spring Boot backend.
-- Create the React + TypeScript frontend.
-- Set up PostgreSQL and Docker Compose.
-- Configure Spring Data JPA and Flyway.
-- Design and review the ERD.
-- Create the initial migrations and entities.
-- Verify local connectivity.
+- `FUTURE`
+- `ACTIVE`
+- `CLOSED`
 
-### Week 2 — Authentication and workspaces
+Use the existing project's conventions where appropriate.
 
-- Implement registration and login.
-- Configure Spring Security and JWT or the chosen secure token approach.
-- Implement current-user functionality.
-- Implement workspace CRUD.
-- Implement membership management and role-based permissions.
-- Add automated tests.
+Define and enforce business rules:
 
-### Week 3 — Projects and issue management
+- A sprint belongs to exactly one project.
+- Issues cannot be assigned to a sprint belonging to another project.
+- A project should not have multiple active sprints unless multiple active sprints are explicitly supported by the design.
+- Start and end dates must be valid.
+- The sprint goal is optional.
+- Only authorized users can create, start, complete, or modify sprints.
+- Closed sprint history must be preserved.
+- Moving issues between sprints must respect the issue's project and authorization rules.
 
-- Implement project CRUD.
-- Implement issue CRUD.
-- Implement assignment, status, and priority.
-- Add validation and authorization.
-- Add filtering, sorting, and pagination.
-- Test important business rules.
+Use database constraints and transactional service logic where appropriate.
 
-### Week 4 — Frontend integration
+## 12. Sprint Planning and Management
 
-- Implement login and registration screens.
-- Implement workspace and project pages.
-- Implement issue list, details, and forms.
-- Connect the UI to the backend.
+Implement:
+
+- Create sprint.
+- Edit sprint details.
+- Add issues to a sprint.
+- Remove issues from a sprint.
+- Reorder sprint issues.
+- Start sprint.
+- Complete sprint.
+- View sprint details.
+- View previous sprints.
+
+Starting a sprint should validate the chosen dates and ensure the project has no conflicting active sprint under the selected business rules.
+
+Completing a sprint must define what happens to unfinished issues. Provide a clear choice to move incomplete issues to the backlog or another sprint, and preserve completed sprint history.
+
+Do not silently delete or lose issue assignments during sprint completion.
+
+All operations that modify multiple related records must be transactional where appropriate.
+
+## 13. Active Sprint Board
+
+Create an active sprint page that reuses the Kanban board implementation where possible.
+
+Suggested route:
+
+`/workspaces/:workspaceId/projects/:projectId/active-sprint`
+
+Include:
+
+- Active sprint name and goal.
+- Sprint start and end dates.
+- Issues grouped by workflow status.
+- Issue drag-and-drop.
+- Remaining and completed issue counts.
+- Sprint completion action.
+- Link back to the backlog.
+- Appropriate empty and loading states.
+
+Do not duplicate the board implementation just to create a separate sprint board. Extract shared board components and logic where useful.
+
+### Phase 2 acceptance criteria
+
+1. Backlog issues can be reordered.
+2. Users can create and manage sprints.
+3. Issues can move between backlog and sprint.
+4. Sprint state transitions follow business rules.
+5. Active sprint issues appear on the correct board.
+6. Sprint completion preserves history and handles unfinished issues explicitly.
+7. Authorization and cross-project data integrity are enforced.
+8. Migrations, tests, and documentation are complete.
+
+---
+
+# PHASE 3 — EPICS, ISSUE HIERARCHY, AND RELEASES
+
+Implement after Phases 1 and 2 are stable.
+
+## 14. Epics
+
+Add an epic concept for grouping related issues.
+
+Requirements:
+
+- Create and edit epics.
+- Assign issues to an epic.
+- Filter issues by epic.
+- Display epic progress.
+- View issues belonging to an epic.
+- Prevent invalid cross-project or cross-workspace associations.
+
+Determine whether an epic should be represented by a separate entity or by a compatible extension of the current issue model. Prefer a separate entity if it leads to clearer semantics and fewer special cases.
+
+Document the decision before implementing it.
+
+## 15. Subtasks and Issue Links
+
+Support issue hierarchies and relationships.
+
+Possible capabilities:
+
+- Parent issue and subtasks.
+- Blocks.
+- Is blocked by.
+- Relates to.
+- Depends on.
+
+Requirements:
+
+- Prevent self-referential links.
+- Prevent invalid cycles in hierarchical relationships.
+- Enforce the intended project and workspace boundaries.
+- Display parent and child issues.
+- Define deletion behavior.
+- Preserve issue history.
+
+Do not confuse issue hierarchy with issue dependency links. Model them separately if their rules differ.
+
+## 16. Releases and Timeline
+
+Add version or release management.
+
+Possible fields:
+
+- `id`
+- `project_id`
+- `name`
+- `description`
+- `start_date`
+- `release_date`
+- `state`
+
+Allow issues to be associated with a release.
+
+Build a timeline view showing epics, due dates, and releases.
+
+Do not attempt to build a fully featured Gantt chart before basic data and relationships are stable.
+
+---
+
+# PHASE 4 — WORKFLOW CONFIGURATION, FILTERS, AND PERMISSIONS
+
+## 17. Workflow Configuration
+
+Allow authorized administrators to configure workflow behavior where practical.
+
+Requirements:
+
+- Define available statuses.
+- Define allowed transitions.
+- Validate transitions in the backend.
+- Keep existing issues compatible with any migration.
+- Provide safe defaults.
+- Prevent invalid transitions.
+- Preserve activity history.
+
+Avoid implementing a generic workflow engine unless the project truly needs one. Start with a simple, well-defined workflow model.
+
+## 18. Saved Filters
+
+Allow users to save useful issue queries.
+
+Support filters such as:
+
+- Project.
+- Assignee.
+- Status.
+- Priority.
+- Issue type.
+- Sprint.
+- Epic.
+- Labels, if supported.
+- Due date.
+- Text search.
+
+Allow users to save personal filters and, optionally, share filters with authorized workspace members.
+
+Validate filter definitions. Do not execute arbitrary SQL or accept unsafe query expressions from users.
+
+## 19. Authorization and Bulk Operations
+
+Review and strengthen permissions across all new functionality.
+
+Implement clear rules for:
+
+- Workspace owners.
+- Workspace administrators.
+- Members.
+- Issue creators and assignees, where relevant.
+
+Support bulk operations only when there is a clear user need, such as updating several issues' assignees, priorities, or statuses.
+
+For every mutation:
+
+- Verify workspace and project membership.
+- Validate target resources.
+- Enforce permission rules in the backend.
+- Use transactions for related updates.
+- Record important changes in activity history.
+- Return predictable errors.
+
+Frontend visibility rules are not a substitute for backend authorization.
+
+---
+
+# PHASE 5 — REPORTS AND DASHBOARDS
+
+## 20. Scrum Reports
+
+Build reports from real issue and sprint data.
+
+Potential reports:
+
+- Sprint burndown.
+- Sprint completion report.
+- Velocity across completed sprints.
+
+Define the underlying metrics and data requirements before implementation.
+
+For burndown, decide whether the metric is based on story points, issue counts, or another effort measure. If story points are not yet implemented, do not pretend issue counts are story points.
+
+Historical reports must not rely only on current issue values if the report requires historical status or scope information. Introduce the necessary snapshots or activity records where justified.
+
+## 21. Kanban Reports
+
+Potential reports:
+
+- Cumulative flow diagram.
+- Cycle time.
+- Lead time.
+- Work-in-progress trends.
+
+Define when the relevant clocks start and stop.
+
+Ensure status-transition history is reliable before calculating cycle time or cumulative flow.
+
+## 22. Dashboards
+
+Allow users to combine selected reports and summary widgets.
+
+Requirements:
+
+- Clear data source for every widget.
+- Appropriate access control.
+- Empty states for projects without enough historical data.
+- Reasonable query performance.
+- Accurate calculations and documented assumptions.
+
+Do not invent metrics or present misleading charts when the underlying data is insufficient.
+
+---
+
+# PHASE 6 — AUTOMATION AND INTEGRATIONS
+
+## 23. Automation Rules
+
+Start with simple event-driven rules.
+
+Possible triggers:
+
+- Issue status changes.
+- Issue is assigned.
+- Issue approaches its due date.
+- Sprint starts.
+- Sprint completes.
+
+Possible actions:
+
+- Send a notification.
+- Change an assignee.
+- Change status when permitted.
+- Create an activity record.
+
+Requirements:
+
+- Rules must be authorized and validated.
+- Prevent infinite automation loops.
+- Define execution order and failure behavior.
+- Record rule executions.
+- Avoid blocking HTTP requests on long-running automation.
+- Keep the initial implementation simple.
+
+Do not introduce a message broker unless there is a demonstrated need.
+
+## 24. Integrations
+
+Only after core features are reliable, consider:
+
+- GitHub integration.
+- Webhooks.
+- Email notifications.
+- External development workflow links.
+
+Use secure secrets management, signature verification for incoming webhooks where appropriate, retry policies, and permission checks.
+
+---
+
+# 25. Database and Migration Requirements
+
+Before each database change:
+
+1. Inspect the current schema and migration history.
+2. Identify existing data that could be affected.
+3. Design a backward-compatible migration when practical.
+4. Add constraints and indexes based on actual access patterns.
+5. Plan backfills for existing records.
+6. Verify the migration against a representative database.
+7. Add tests for the new relationships and constraints.
+
+Use Flyway migrations as the schema source of truth.
+
+Do not modify a migration that has already been applied to shared or deployed environments. Create a new migration instead.
+
+Do not use Hibernate automatic schema updates in production.
+
+Preserve existing UUIDs and data whenever possible.
+
+Document migration risks and rollback limitations, particularly for destructive schema changes.
+
+# 26. Backend Architecture Requirements
+
+Follow the existing architecture where reasonable.
+
+Use clear separation between:
+
+- Controllers.
+- Services.
+- Repositories.
+- Entities.
+- Request and response DTOs.
+- Validation.
+- Authorization.
+- Error handling.
+
+Keep business logic in services or appropriate domain components rather than controllers.
+
+Use transactions for operations that must succeed or fail together.
+
+Avoid exposing JPA entities directly as public API responses.
+
+Use pagination for potentially large result sets.
+
+Avoid N+1 queries when loading board cards and sprint issues.
+
+Ensure rank updates, issue transitions, sprint operations, and key generation are concurrency-safe to the extent required by the design.
+
+# 27. Frontend Requirements
+
+Preserve the current React + TypeScript architecture and styling system.
+
+Build reusable components where appropriate:
+
+- `IssueCard`
+- `KanbanBoard`
+- `KanbanColumn`
+- `BoardToolbar`
+- `IssueFilters`
+- `IssueDetail`
+- `BacklogView`
+- `SprintPanel`
+- `SprintSelector`
+- `SprintBoard`
+- `EpicPanel`
+- `ReleaseTimeline`
+
+These are suggested names. Reuse existing components when they already serve the same purpose.
+
+Requirements:
+
+- Use typed API request and response models.
+- Centralize API calls.
 - Handle loading, error, and empty states.
-- Verify complete end-to-end workflows.
+- Keep frontend state consistent with server responses.
+- Preserve search and filter state when appropriate.
+- Ensure drag-and-drop works with keyboard-accessible alternatives where practical.
+- Keep the interface responsive.
+- Avoid giant components.
+- Avoid duplicating board logic across Kanban and Scrum views.
+- Do not use mock data as if it were persisted server data.
 
-### Week 5 — Quality and documentation
+# 28. Testing Requirements
 
-- Improve test coverage.
-- Fix bugs and authorization issues.
-- Add OpenAPI documentation.
-- Configure CI.
-- Improve Docker and developer setup.
-- Write a professional README.
-- Capture screenshots and prepare a demo.
+For each phase, add tests for the new functionality.
 
-### Week 6 — Deployment and polish
+### Backend
 
-- Deploy the application.
-- Perform production smoke tests.
-- Fix deployment issues.
-- Improve usability and responsiveness.
-- Review security and configuration.
-- Prepare a portfolio summary and interview talking points.
+Use JUnit 5, Mockito, and Spring Boot Test.
 
-If only four weeks are available, prioritize the MVP: authentication, workspaces, projects, issues, authorization, tests, documentation, and a working demo. Treat comments, activity feeds, notifications, and advanced infrastructure as optional.
+Test:
 
-## 15. How You Must Work With Me
+- Issue key generation and uniqueness.
+- Ranking and reorder operations.
+- Status changes.
+- Pagination and filters.
+- Permission enforcement.
+- Cross-workspace and cross-project access.
+- Sprint lifecycle transitions.
+- Invalid sprint and issue associations.
+- Transactional behavior.
+- Migration compatibility where practical.
 
-Follow this workflow strictly.
+Use integration tests against PostgreSQL or Testcontainers where appropriate.
 
-### Step 1 — Inspect the current state
+### Frontend
 
-Before proposing changes, ask me for the current repository structure, relevant files, terminal output, or GitHub link when needed.
+Test:
 
-Do not assume that a previously suggested step has already been completed.
+- Correct board column rendering.
+- Drag-and-drop success and failure.
+- Filter composition.
+- Issue ordering.
+- Backlog and sprint transitions.
+- Loading, error, and empty states.
+- Unauthorized action handling.
+- Routing and navigation.
 
-If repository access is unavailable, tell me which files or command outputs to provide. Do not claim to have inspected code that you cannot access.
+### Regression testing
 
-### Step 2 — Maintain a project roadmap
+Ensure existing workspace, project, issue, comment, activity, notification, and membership functionality continues to work.
 
-Keep track of:
+Do not remove or weaken existing tests merely to make the new implementation pass.
 
-- Completed milestones.
-- Current milestone.
-- Remaining tasks.
-- Known bugs.
-- Architecture decisions.
-- Commands that have been verified.
-- Tests that have actually passed.
+# 29. Definition of Done
 
-At the end of each milestone, provide a concise progress summary and recommend the next step.
+A feature is complete only when:
 
-### Step 3 — Work in small, verifiable steps
+1. The implementation fits the existing architecture.
+2. Database changes have appropriate migrations.
+3. Backend validation and authorization are implemented.
+4. Frontend behavior is connected to the real API.
+5. Errors are handled clearly.
+6. Relevant automated tests pass.
+7. Existing functionality has not regressed.
+8. Documentation is updated.
+9. The feature has been manually verified where possible.
+10. Any known limitations are explicitly documented.
 
-For each task, explain:
+# 30. Required Project Documentation
 
-1. What we are building.
-2. Why it is needed.
-3. What files will be created or changed.
-4. The exact implementation.
-5. The commands I should run.
-6. What successful output should look like.
-7. How to test the implementation.
-8. Common errors and troubleshooting steps.
+Maintain the following documentation as the project evolves:
 
-Do not generate an entire application in one response.
+- Root README.
+- Architecture overview.
+- ERD and schema notes.
+- API documentation.
+- Kanban and ranking design.
+- Issue-key generation design.
+- Sprint lifecycle rules.
+- Authorization rules.
+- Setup and migration instructions.
+- Testing instructions.
+- Known limitations.
+- Future roadmap.
 
-Do not move to the next milestone until I confirm that the current milestone works, unless I explicitly ask for a complete implementation plan.
+Record major architectural decisions and explain why a particular design was chosen.
 
-### Step 4 — Provide usable code
+# 31. Implementation Order
 
-When writing code:
+Follow this priority order:
 
-- Include the exact file path.
-- Provide complete code for small files.
-- For existing files, show the full updated file when practical, or a clear patch for large files.
-- Include imports and required dependencies.
-- Explain non-obvious code decisions.
-- Ensure code matches the versions and configuration in the project.
-- Identify any additional files or configuration that must be changed.
-- Provide commands to compile, run, and test the code.
+1. Repository inspection and current-state assessment.
+2. Issue keys.
+3. Persistent issue ranking.
+4. Kanban board and drag-and-drop.
+5. Quick filters and assignee swimlanes.
+6. Workspace/project issue APIs and pagination.
+7. Backlog.
+8. Sprint data model and lifecycle.
+9. Active sprint board.
+10. Epics.
+11. Subtasks, issue links, and releases.
+12. Workflow customization and saved filters.
+13. Reports and dashboards.
+14. Automation and external integrations.
 
-Avoid vague instructions such as “configure security appropriately.” Show the concrete configuration and explain how it works.
+Do not start Phase 2 until Phase 1's acceptance criteria are satisfied, unless I explicitly authorize parallel work.
 
-### Step 5 — Diagnose errors systematically
+Do not begin advanced reporting before the underlying issue history and sprint data are reliable.
 
-When I share an error:
+# 32. How You Must Work
 
-1. Identify the likely root cause.
-2. Ask for missing logs or files only when necessary.
-3. Provide the smallest reliable fix.
-4. Explain why the error happened.
-5. Give commands to verify the fix.
-6. Add or suggest a regression test when appropriate.
+For every milestone:
 
-Do not rewrite unrelated modules to solve a local problem.
+1. Explain the goal and scope.
+2. Identify the files to inspect or change.
+3. Present the implementation plan.
+4. Explain important design decisions.
+5. Implement a small, coherent set of changes.
+6. Provide commands to run.
+7. Run or guide me through the relevant tests.
+8. Review the results and fix issues.
+9. Update the roadmap and documentation.
+10. Proceed to the next milestone only after verification.
 
-### Step 6 — Teach rather than blindly implement
+If you discover that an assumption in this prompt conflicts with the existing implementation, explain the conflict and recommend the smallest safe adjustment.
 
-Explain Spring Boot concepts in relation to my existing knowledge of React and Node.js.
+Do not overwrite files without understanding their current responsibilities.
 
-When relevant, compare:
+Do not claim that you have run commands or tests when you have not.
 
-- Spring Controller vs. Express route handler.
-- Spring Service vs. Node.js business/service layer.
-- Spring Data JPA repository vs. a database access layer.
-- DTO vs. Entity vs. TypeScript API type.
-- Dependency injection vs. manually constructing dependencies.
-- Spring Security filters vs. Node.js middleware.
-- JPA transactions vs. database transactions in a typical Node.js backend.
-- JUnit/Mockito vs. JavaScript testing tools.
+If you have access to repository-editing and terminal tools, use them to inspect, implement, and verify changes directly. Otherwise, provide exact file paths, complete code or patches, and verification commands.
 
-Use concise explanations and practical examples.
+# 33. Start Now
 
-## 16. Required Deliverables
+Begin by inspecting the existing Chila repository.
 
-By the end of the project, aim to produce:
+Focus on:
 
-1. A working Spring Boot backend.
-2. A working React + TypeScript frontend.
-3. A PostgreSQL schema managed by Flyway.
-4. Secure authentication and authorization.
-5. Workspace, membership, project, and issue management.
-6. Automated backend tests.
-7. Relevant frontend tests.
-8. Docker Compose for local development.
-9. OpenAPI documentation.
-10. GitHub Actions CI.
-11. A comprehensive README.
-12. An ERD and architecture diagram.
-13. A deployed demo, if feasible.
-14. Screenshots or a demo video.
-15. A concise CV project description.
-16. A list of technical decisions and trade-offs to discuss in interviews.
+- The issue entity, service, repository, controller, and DTOs.
+- The existing database migrations.
+- The current project model and project key configuration.
+- The current issue status and priority model.
+- `frontend/src/features/issues/IssuesPanel.tsx`.
+- `frontend/src/auth/api.ts`.
+- The existing frontend router and layout.
+- Existing tests.
 
-## 17. Final Quality Standard
+Then provide:
 
-The project should demonstrate that I understand:
+1. A concise current-state assessment.
+2. A list of files that need modification.
+3. The proposed issue-key generation strategy.
+4. The proposed ranking strategy.
+5. The proposed API changes.
+6. The database migration plan.
+7. The Phase 1 implementation checklist.
 
-- Java and Spring Boot fundamentals.
-- REST API design.
-- Relational database modeling.
-- SQL migrations.
-- Authentication and authorization.
-- Backend validation and error handling.
-- Transaction management.
-- Automated testing.
-- React and TypeScript integration.
-- Docker-based development.
-- CI/CD fundamentals.
-- GitHub documentation and professional development practices.
+After presenting the assessment, begin implementing **Phase 1: Issue Keys, Persistent Ranking, and Kanban Board**, unless a critical missing decision prevents safe implementation.
 
-Prioritize a reliable, well-tested modular monolith over an unfinished system with many technologies.
-
-Do not add Redis, Elasticsearch, Kafka, microservices, Kubernetes, or other advanced technologies merely to make the project appear more complex. Add them only after the core application works and there is a clear technical justification.
-
-## 18. Start Here
-
-Begin by guiding me through the initial repository setup.
-
-First, determine what I have already completed:
-
-- Whether the GitHub repository `chila` exists.
-- Whether Java 21 is installed.
-- Whether the Spring Boot backend has been generated.
-- Whether the React + TypeScript frontend has been generated.
-- Whether the health endpoint works.
-- Whether the frontend can communicate with the backend.
-
-Ask me for the minimum information needed to establish the current state.
-
-Then create a prioritized checklist and begin with the first incomplete step.
-
-Do not jump straight into implementing all business features. Build the foundation, verify it works, and proceed incrementally.
-
-**The primary goal is to help me finish Chila as a real, demonstrable, interview-ready Java Full-Stack portfolio project while developing my Spring Boot skills along the way.**
+The final objective is to make Chila a reliable, maintainable Jira-like application with working Kanban and Scrum workflows, rather than merely adding a large number of disconnected features.

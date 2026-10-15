@@ -6,6 +6,7 @@ import java.util.UUID;
 import com.chila.backend.issue.api.CreateIssueRequest;
 import com.chila.backend.issue.api.IssuePageResponse;
 import com.chila.backend.issue.api.IssueResponse;
+import com.chila.backend.issue.api.MoveIssueRequest;
 import com.chila.backend.issue.api.UpdateIssueRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -61,12 +62,24 @@ public class IssueController {
         return issueService.get(userId(authentication), issueId);
     }
 
+    @GetMapping("/api/v1/workspaces/{workspaceId}/issues/{issueKey}")
+    public IssueResponse getByKey(JwtAuthenticationToken authentication, @PathVariable UUID workspaceId,
+            @PathVariable String issueKey) {
+        return issueService.getByKey(userId(authentication), workspaceId, issueKey);
+    }
+
     @PatchMapping("/api/v1/issues/{issueId}")
     public IssueResponse update(
             JwtAuthenticationToken authentication,
             @PathVariable UUID issueId,
             @Valid @RequestBody UpdateIssueRequest request) {
         return issueService.update(userId(authentication), issueId, request);
+    }
+
+    @PatchMapping("/api/v1/issues/{issueId}/position")
+    public IssueResponse move(JwtAuthenticationToken authentication, @PathVariable UUID issueId,
+            @Valid @RequestBody MoveIssueRequest request) {
+        return issueService.move(userId(authentication), issueId, request);
     }
 
     @DeleteMapping("/api/v1/issues/{issueId}")

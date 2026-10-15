@@ -42,7 +42,7 @@ export type IssueType = 'TASK' | 'BUG' | 'STORY'
 export type IssueStatus = 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'DONE'
 export type IssuePriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
 export type Issue = {
-  id: string; projectId: string; projectKey: string; title: string; description: string | null
+  id: string; projectId: string; projectKey: string; issueKey: string; issueNumber: number; title: string; description: string | null
   type: IssueType; status: IssueStatus; priority: IssuePriority; reporterId: string
   reporterName: string; assigneeId: string | null; assigneeName: string | null
   dueDate: string | null; archivedAt: string | null; createdAt: string; updatedAt: string
@@ -246,6 +246,14 @@ export async function listIssues(projectId: string, filters: IssueFilters = {}):
 export async function getIssue(issueId: string): Promise<Issue> {
   return request<Issue>(`/api/v1/issues/${encodeURIComponent(issueId)}`)
 }
+export async function getIssueByKey(workspaceId: string, issueKey: string): Promise<Issue> {
+  return request<Issue>(`/api/v1/workspaces/${encodeURIComponent(workspaceId)}/issues/${encodeURIComponent(issueKey)}`)
+}
+export async function getIssueReference(workspaceId: string, reference: string): Promise<Issue> {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(reference)
+    ? getIssue(reference)
+    : getIssueByKey(workspaceId, reference)
+}
 
 export type IssueInput = {
   title: string; description: string | null; type: IssueType; status: IssueStatus
@@ -256,6 +264,11 @@ export async function createIssue(projectId: string, input: IssueInput): Promise
 }
 export async function updateIssue(issueId: string, input: IssueInput): Promise<Issue> {
   return request<Issue>(`/api/v1/issues/${encodeURIComponent(issueId)}`, { method: 'PATCH', body: JSON.stringify(input) })
+}
+export async function moveIssue(issueId: string, status: IssueStatus, beforeIssueId: string | null): Promise<Issue> {
+  return request<Issue>(`/api/v1/issues/${encodeURIComponent(issueId)}/position`, {
+    method: 'PATCH', body: JSON.stringify({ status, beforeIssueId }),
+  })
 }
 export async function archiveIssue(issueId: string): Promise<void> {
   return request<void>(`/api/v1/issues/${encodeURIComponent(issueId)}`, { method: 'DELETE' })

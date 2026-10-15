@@ -43,8 +43,8 @@ export function OverviewPage() {
     </section>
     <section className="overview-section">
       <div className="section-heading"><div><h2>Recently updated issues</h2><p className="subtle">Ordered by update time among the 100 most recently created issues in each project.</p></div><Link className="text-action" to={`/workspaces/${workspaceId}/issues`}>Browse issues</Link></div>
-      {recentIssues.length ? <div className="overview-issue-list">{recentIssues.map((issue) => <Link className="overview-issue-row" key={issue.id} to={`/workspaces/${workspaceId}/issues/${issue.id}`}>
-        <span className="project-key-mark">{issue.projectKey}</span><span className="overview-issue-title"><strong>{issue.title}</strong><small>{issue.type.toLowerCase()} · {issue.assigneeName || 'Unassigned'}</small></span>
+      {recentIssues.length ? <div className="overview-issue-list">{recentIssues.map((issue) => <Link className="overview-issue-row" key={issue.id} to={`/workspaces/${workspaceId}/issues/${issue.issueKey}`}>
+        <span className="project-key-mark">{issue.issueKey}</span><span className="overview-issue-title"><strong>{issue.title}</strong><small>{issue.type.toLowerCase()} · {issue.assigneeName || 'Unassigned'}</small></span>
         <span className={`status-pill issue-status-${issue.status.toLowerCase()}`}>{issue.status.replace('_', ' ').toLowerCase()}</span>
         <span className={`priority-label priority-${issue.priority.toLowerCase()}`}>{issue.priority.toLowerCase()}</span>
       </Link>)}</div> : <EmptyState title="No issues yet" detail="New project work will appear here as your team creates issues." />}

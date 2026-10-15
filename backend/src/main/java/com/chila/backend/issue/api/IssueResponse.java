@@ -12,6 +12,8 @@ public record IssueResponse(
         UUID id,
         UUID projectId,
         String projectKey,
+        String issueKey,
+        long issueNumber,
         String title,
         String description,
         IssueType type,
