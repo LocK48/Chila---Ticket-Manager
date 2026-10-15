@@ -53,4 +53,4 @@ Adding a member is a direct MVP workflow; invitations and email delivery are def
 - Workspace creation and owner membership insertion share one transaction.
 - Database uniqueness protects against duplicate membership even under concurrent requests.
 - User entities and password hashes are never serialized; responses use dedicated DTOs.
-- Workspace deletion intentionally deletes membership rows via the foreign key cascade.
+- Workspace deletion removes membership rows in the same transaction before deleting the workspace.

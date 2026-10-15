@@ -340,6 +340,99 @@ class BackendApplicationTests {
 				.andExpect(status().isNotFound());
 	}
 
+	@Test
+	void ownerCanCreateListUpdateAndArchiveProjectsWithWorkspaceScopedUniqueKeys() throws Exception {
+		registerUser();
+		Cookie owner = loginAndGetAccessCookie();
+		MvcResult workspace = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces")
+					.contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Team\"}"), owner))
+				.andExpect(status().isCreated()).andReturn();
+		String workspaceId = objectMapper.readTree(workspace.getResponse().getContentAsString()).get("id").asText();
+
+		MvcResult created = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces/{id}/projects", workspaceId)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"name\":\"Ticket Manager\",\"key\":\"chila\",\"description\":\"First project\"}"), owner))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.name").value("Ticket Manager"))
+				.andExpect(jsonPath("$.key").value("CHILA"))
+				.andExpect(jsonPath("$.status").value("ACTIVE"))
+				.andReturn();
+		String projectId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asText();
+
+		mockMvc.perform(get("/api/v1/workspaces/{id}/projects", workspaceId).cookie(owner))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].id").value(projectId));
+		mockMvc.perform(get("/api/v1/projects/{id}", projectId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.createdBy").exists());
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces/{id}/projects", workspaceId)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"name\":\"Duplicate\",\"key\":\"CHILA\"}"), owner))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("PROJECT_KEY_ALREADY_EXISTS"));
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces/{id}/projects", workspaceId)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"name\":\"Invalid key\",\"key\":\"bad-key\"}"), owner))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fieldErrors.key").exists());
+
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/projects/{id}", projectId)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"name\":\"Updated Project\",\"description\":\"Updated\"}"), owner))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.name").value("Updated Project"))
+				.andExpect(jsonPath("$.key").value("CHILA"));
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/projects/{id}/status", projectId)
+					.contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"ARCHIVED\"}"), owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ARCHIVED"));
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/projects/{id}/status", projectId)
+					.contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"REMOVED\"}"), owner))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
+	void projectReadsRequireWorkspaceMembershipAndMembersCannotManageProjects() throws Exception {
+		registerUser();
+		Cookie owner = loginAndGetAccessCookie();
+		MvcResult workspace = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces")
+					.contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Team\"}"), owner))
+				.andExpect(status().isCreated()).andReturn();
+		String workspaceId = objectMapper.readTree(workspace.getResponse().getContentAsString()).get("id").asText();
+		String projectJson = "{\"name\":\"Private project\",\"key\":\"PRIVATE\"}";
+		MvcResult created = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces/{id}/projects", workspaceId)
+					.contentType(MediaType.APPLICATION_JSON).content(projectJson), owner))
+				.andExpect(status().isCreated()).andReturn();
+		String projectId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asText();
+
+		mockMvc.perform(registrationRequest("{\"email\":\"member@example.com\","
+				+ "\"password\":\"long-enough-password\",\"displayName\":\"Member User\"}"))
+				.andExpect(status().isCreated());
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces/{id}/members", workspaceId)
+					.contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"member@example.com\"}"), owner))
+				.andExpect(status().isCreated());
+		Cookie member = loginAndGetAccessCookie("member@example.com");
+		mockMvc.perform(get("/api/v1/projects/{id}", projectId).cookie(member))
+				.andExpect(status().isOk());
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces/{id}/projects", workspaceId)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"name\":\"Member Project\",\"key\":\"MEMBER\"}"), member))
+				.andExpect(status().isCreated());
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/projects/{id}", projectId)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"name\":\"Unauthorized edit\"}"), member))
+				.andExpect(status().isForbidden());
+
+		mockMvc.perform(registrationRequest("{\"email\":\"outsider@example.com\","
+				+ "\"password\":\"long-enough-password\",\"displayName\":\"Outsider\"}"))
+				.andExpect(status().isCreated());
+		Cookie outsider = loginAndGetAccessCookie("outsider@example.com");
+		mockMvc.perform(get("/api/v1/projects/{id}", projectId).cookie(outsider))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("WORKSPACE_NOT_FOUND"));
+		mockMvc.perform(get("/api/v1/workspaces/{id}/projects", workspaceId).cookie(outsider))
+				.andExpect(status().isNotFound());
+	}
+
 	private String validRegistrationJson() {
 		return "{\"email\":\"Loc@Example.com\","
 				+ "\"password\":\"long-enough-password\",\"displayName\":\" Loc Nguyen \"}";

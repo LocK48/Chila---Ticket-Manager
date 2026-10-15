@@ -5,6 +5,39 @@ export type User = {
   createdAt: string
 }
 
+export type MembershipRole = 'OWNER' | 'ADMIN' | 'MEMBER'
+
+export type Workspace = {
+  id: string
+  name: string
+  description: string | null
+  role: MembershipRole
+  createdAt: string
+  updatedAt: string
+}
+
+export type WorkspaceMember = {
+  userId: string
+  email: string
+  displayName: string
+  role: MembershipRole
+  joinedAt: string
+}
+
+export type ProjectStatus = 'ACTIVE' | 'ARCHIVED'
+
+export type Project = {
+  id: string
+  workspaceId: string
+  createdBy: string
+  name: string
+  key: string
+  description: string | null
+  status: ProjectStatus
+  createdAt: string
+  updatedAt: string
+}
+
 export type RegistrationInput = {
   email: string
   password: string
@@ -90,6 +123,95 @@ export async function updateDisplayName(displayName: string): Promise<User> {
 
 export async function logout(): Promise<void> {
   await request<void>('/api/v1/auth/logout', { method: 'POST' })
+}
+
+export async function listWorkspaces(): Promise<Workspace[]> {
+  return request<Workspace[]>('/api/v1/workspaces')
+}
+
+export async function createWorkspace(name: string, description: string): Promise<Workspace> {
+  return request<Workspace>('/api/v1/workspaces', {
+    method: 'POST',
+    body: JSON.stringify({ name, description: description || null }),
+  })
+}
+
+export async function updateWorkspace(id: string, name: string, description: string): Promise<Workspace> {
+  return request<Workspace>(`/api/v1/workspaces/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name, description: description || null }),
+  })
+}
+
+export async function deleteWorkspace(id: string): Promise<void> {
+  return request<void>(`/api/v1/workspaces/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+export async function listWorkspaceMembers(workspaceId: string): Promise<WorkspaceMember[]> {
+  return request<WorkspaceMember[]>(`/api/v1/workspaces/${encodeURIComponent(workspaceId)}/members`)
+}
+
+export async function addWorkspaceMember(
+  workspaceId: string,
+  email: string,
+  role: Exclude<MembershipRole, 'OWNER'>,
+): Promise<WorkspaceMember> {
+  return request<WorkspaceMember>(`/api/v1/workspaces/${encodeURIComponent(workspaceId)}/members`, {
+    method: 'POST',
+    body: JSON.stringify({ email, role }),
+  })
+}
+
+export async function updateWorkspaceMemberRole(
+  workspaceId: string,
+  userId: string,
+  role: Exclude<MembershipRole, 'OWNER'>,
+): Promise<WorkspaceMember> {
+  return request<WorkspaceMember>(
+    `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/members/${encodeURIComponent(userId)}`,
+    { method: 'PATCH', body: JSON.stringify({ role }) },
+  )
+}
+
+export async function removeWorkspaceMember(workspaceId: string, userId: string): Promise<void> {
+  return request<void>(
+    `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/members/${encodeURIComponent(userId)}`,
+    { method: 'DELETE' },
+  )
+}
+
+export async function listProjects(workspaceId: string): Promise<Project[]> {
+  return request<Project[]>(`/api/v1/workspaces/${encodeURIComponent(workspaceId)}/projects`)
+}
+
+export async function createProject(
+  workspaceId: string,
+  name: string,
+  key: string,
+  description: string,
+): Promise<Project> {
+  return request<Project>(`/api/v1/workspaces/${encodeURIComponent(workspaceId)}/projects`, {
+    method: 'POST',
+    body: JSON.stringify({ name, key, description: description || null }),
+  })
+}
+
+export async function updateProject(
+  projectId: string,
+  name: string,
+  description: string,
+): Promise<Project> {
+  return request<Project>(`/api/v1/projects/${encodeURIComponent(projectId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name, description: description || null }),
+  })
+}
+
+export async function updateProjectStatus(projectId: string, status: ProjectStatus): Promise<Project> {
+  return request<Project>(`/api/v1/projects/${encodeURIComponent(projectId)}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  })
 }
 
 export async function initializeSession(): Promise<User | null> {

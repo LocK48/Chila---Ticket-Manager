@@ -2,7 +2,7 @@
 
 Chila is a team project and issue management platform. This repository is being built incrementally as a Java full-stack portfolio project.
 
-## Current milestone: Phase C workspaces and memberships
+## Current milestone: Phase D projects
 
 - Java 21 and Spring Boot 3.5 backend.
 - React, TypeScript, and Vite frontend.
@@ -15,8 +15,10 @@ Chila is a team project and issue management platform. This repository is being 
 - Workspaces can be created, listed, viewed, updated, and deleted through authenticated APIs.
 - Workspace creation grants the creator the `OWNER` role. Members can be added by registered email and assigned `ADMIN` or `MEMBER` roles.
 - Workspace membership is enforced on every workspace endpoint. Non-members receive `404` for workspace-specific resources.
+- The signed-in home page can create and switch workspaces, edit workspace details, add existing users, change member roles, remove members or leave, and delete a workspace as its owner.
+- Projects can be created and listed inside workspaces; owners and admins can update details and archive or restore them.
 
-Workspace and membership API/schema decisions are documented in [docs/phase-c-design.md](docs/phase-c-design.md). Workspace frontend workflows, projects, issues, and CI are still planned.
+Workspace and membership API/schema decisions are documented in [docs/phase-c-design.md](docs/phase-c-design.md). Phase D project decisions are in [docs/phase-d-design.md](docs/phase-d-design.md). Issue workflows, CI, and deployment are still planned.
 
 ## Prerequisites
 
@@ -85,8 +87,8 @@ npm run build
 
 1. Foundation: local backend/frontend startup, health check, CORS, and PostgreSQL service. (Complete.)
 2. Phase B: PostgreSQL/Flyway foundation, authentication, and user management. (Complete.)
-3. Phase C: workspaces and membership (backend APIs/schema implemented; frontend workflows remain).
-4. Projects and issue workflows.
+3. Phase C: workspaces and membership (complete; backend APIs, schema, frontend workflows, and access checks verified).
+4. Phase D: projects (complete; schema, membership-protected APIs, frontend project workflows, and archive/restore implemented).
 5. Frontend product workflows, tests, CI, and deployment.
 
 Each milestone will be verified before moving on.

@@ -6,6 +6,8 @@ import java.util.TreeMap;
 import com.chila.backend.user.DuplicateEmailException;
 import com.chila.backend.user.UserNotFoundException;
 import com.chila.backend.auth.InvalidCredentialsException;
+import com.chila.backend.project.DuplicateProjectKeyException;
+import com.chila.backend.project.ProjectNotFoundException;
 import com.chila.backend.workspace.MembershipConflictException;
 import com.chila.backend.workspace.WorkspaceAccessDeniedException;
 import com.chila.backend.workspace.WorkspaceNotFoundException;
@@ -16,6 +18,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -33,6 +36,14 @@ public class GlobalExceptionHandler {
                 fieldErrors.putIfAbsent(error.getField(), error.getDefaultMessage()));
         return response(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Request validation failed.",
                 request, fieldErrors);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleUnreadableRequest(
+            HttpMessageNotReadableException exception,
+            HttpServletRequest request) {
+        return response(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "The request body is malformed or contains an invalid value.",
+                request, Map.of());
     }
 
     @ExceptionHandler(InvalidInputException.class)
@@ -84,6 +95,20 @@ public class GlobalExceptionHandler {
             WorkspaceAccessDeniedException exception,
             HttpServletRequest request) {
         return response(HttpStatus.FORBIDDEN, "ACCESS_DENIED", exception.getMessage(), request, Map.of());
+    }
+
+    @ExceptionHandler(ProjectNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleProjectNotFound(
+            ProjectNotFoundException exception,
+            HttpServletRequest request) {
+        return response(HttpStatus.NOT_FOUND, "PROJECT_NOT_FOUND", exception.getMessage(), request, Map.of());
+    }
+
+    @ExceptionHandler(DuplicateProjectKeyException.class)
+    public ResponseEntity<ApiErrorResponse> handleDuplicateProjectKey(
+            DuplicateProjectKeyException exception,
+            HttpServletRequest request) {
+        return response(HttpStatus.CONFLICT, "PROJECT_KEY_ALREADY_EXISTS", exception.getMessage(), request, Map.of());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
