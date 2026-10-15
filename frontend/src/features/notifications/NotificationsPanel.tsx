@@ -5,12 +5,15 @@ export function NotificationsPanel() {
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState<Notification[]>([])
   const [unread, setUnread] = useState(0)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const load = useCallback(async () => {
+    setLoading(true)
     try {
       const [all, unreadPage] = await Promise.all([listNotifications(), listNotifications(true)])
       setItems(all.items); setUnread(unreadPage.totalItems); setError('')
     } catch (cause) { setError(cause instanceof ApiError ? cause.message : 'Could not load notifications.') }
+    finally { setLoading(false) }
   }, [])
   useEffect(() => { void Promise.resolve().then(load) }, [load])
   async function markRead(notification: Notification) {
@@ -28,10 +31,11 @@ export function NotificationsPanel() {
     {open && <section className="notifications-popover" aria-label="Notifications">
       <div className="notifications-title"><strong>Notifications</strong><button className="text-action" onClick={() => void load()}>Refresh</button></div>
       {error && <p className="form-error" role="alert">{error}</p>}
-      {items.map((item) => <button className={`notification-item${item.readAt ? '' : ' notification-unread'}`} key={item.id} onClick={() => void markRead(item)}>
+      {loading && <p className="subtle" role="status">Loading notifications…</p>}
+      {!loading && items.map((item) => <button className={`notification-item${item.readAt ? '' : ' notification-unread'}`} key={item.id} onClick={() => void markRead(item)}>
         <span className="notification-indicator" /><span><strong>{item.message}</strong><small>{formatDate(item.createdAt)}{item.readAt ? ' · Read' : ' · Mark read'}</small></span>
       </button>)}
-      {!items.length && !error && <p className="empty-copy">You’re all caught up.</p>}
+      {!loading && !items.length && !error && <p className="empty-copy">You’re all caught up.</p>}
     </section>}
   </div>
 }

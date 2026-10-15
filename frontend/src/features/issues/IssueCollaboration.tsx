@@ -5,13 +5,16 @@ export function IssueCollaboration({ issueId, writable }: { issueId: string; wri
   const [comments, setComments] = useState<IssueComment[]>([])
   const [activities, setActivities] = useState<IssueActivity[]>([])
   const [body, setBody] = useState('')
+  const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const load = useCallback(async () => {
+    setLoading(true)
     try {
       const [commentPage, activityPage] = await Promise.all([listIssueComments(issueId), listIssueActivities(issueId)])
       setComments(commentPage.items); setActivities(activityPage.items); setError('')
     } catch (cause) { setError(cause instanceof ApiError ? cause.message : 'Could not load this issue’s conversation.') }
+    finally { setLoading(false) }
   }, [issueId])
   useEffect(() => { void Promise.resolve().then(load) }, [load])
   async function submit(event: FormEvent) {
@@ -28,13 +31,14 @@ export function IssueCollaboration({ issueId, writable }: { issueId: string; wri
       <textarea id={`comment-${issueId}`} required maxLength={5000} rows={2} placeholder="Share an update with your team…" value={body} onChange={(event) => setBody(event.target.value)} />
       <button className="primary-button compact" disabled={busy || !body.trim()}>{busy ? 'Posting…' : 'Comment'}</button>
     </form>}
-    <div className="comment-list">{comments.map((comment) => <article className="comment-item" key={comment.id}>
+    {loading && <p className="subtle" role="status">Loading conversation…</p>}
+    {!loading && <div className="comment-list">{comments.map((comment) => <article className="comment-item" key={comment.id}>
       <div><strong>{comment.authorName}</strong><time>{formatDate(comment.createdAt)}</time></div><p>{comment.body}</p>
-    </article>)}{!comments.length && <p className="empty-copy">No comments yet.</p>}</div>
+    </article>)}{!comments.length && <p className="empty-copy">No comments yet.</p>}</div>}
     <h6 className="activity-title">Activity</h6>
-    <ol className="activity-list">{activities.map((item) => <li key={item.id}><span className="activity-dot" />
+    {!loading && <ol className="activity-list">{activities.map((item) => <li key={item.id}><span className="activity-dot" />
       <div><strong>{item.actorName}</strong> {activityText(item)}<time>{formatDate(item.createdAt)}</time></div>
-    </li>)}</ol>
+    </li>)}</ol>}
   </div>
 }
 
