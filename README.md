@@ -33,6 +33,10 @@ docker compose ps
 
 The sample `.env` values are for local development only. Before starting the backend, replace `CHILA_JWT_SECRET` in `.env` with a private Base64-encoded secret of at least 32 bytes (for example, generate one with `openssl rand -base64 32`). Never commit `.env` or use a development key in production. The backend imports the root `.env` file when run from `backend`; Compose reads the same database settings. Flyway applies migrations automatically when the backend starts.
 
+If another PostgreSQL server already uses port `5432`, set `POSTGRES_PORT=5433` in `.env` so the Compose database and backend use port `5433` without changing the other server.
+
+To use Neon instead of local Compose storage, set `POSTGRESQL_DB_URL` in `.env` to the Neon PostgreSQL connection URL. The backend accepts Neon’s `postgresql://...` URL or a `jdbc:postgresql://...` URL; credentials embedded in the URL are used unless `SPRING_DATASOURCE_USERNAME` or `SPRING_DATASOURCE_PASSWORD` overrides them. `SPRING_DATASOURCE_URL`, when set, has highest priority. Keep the URL private and restart the backend after changing it. The local Compose database remains available as the fallback when `POSTGRESQL_DB_URL` is unset.
+
 In one terminal, start the backend:
 
 ```powershell

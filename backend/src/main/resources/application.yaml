@@ -1,12 +1,15 @@
 spring:
   config:
-    import: optional:file:../.env[.properties]
+    # Support starting Spring Boot from either the backend directory or project root.
+    import:
+      - optional:file:./.env[.properties]
+      - optional:file:../.env[.properties]
   application:
     name: chila-backend
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:chila}}
-    username: ${SPRING_DATASOURCE_USERNAME:${POSTGRES_USER:chila}}
-    password: ${SPRING_DATASOURCE_PASSWORD:${POSTGRES_PASSWORD:change-me-local-only}}
+    url: ${SPRING_DATASOURCE_URL:${POSTGRESQL_DB_URL:jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:chila}}}
+    username: ${SPRING_DATASOURCE_USERNAME:${POSTGRES_USER:${POSTGRESQL_USER:chila}}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${POSTGRES_PASSWORD:${POSTGRESQL_PASSWORD:change-me-local-only}}}
   jpa:
     open-in-view: false
     hibernate:
