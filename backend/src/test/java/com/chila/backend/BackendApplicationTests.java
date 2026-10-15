@@ -21,6 +21,7 @@ import com.chila.backend.user.UserRepository;
 import com.chila.backend.workspace.WorkspaceRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -433,9 +434,110 @@ class BackendApplicationTests {
 				.andExpect(status().isNotFound());
 	}
 
+	@Test
+	void issueLifecycleSupportsAssignmentFilteringPagingAndArchiveRestore() throws Exception {
+		registerUser();
+		Cookie owner = loginAndGetAccessCookie();
+		String workspaceId = createWorkspaceFor(owner);
+		mockMvc.perform(registrationRequest("{\"email\":\"assignee@example.com\","
+				+ "\"password\":\"long-enough-password\",\"displayName\":\"Assigned Person\"}"))
+				.andExpect(status().isCreated());
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces/{id}/members", workspaceId)
+					.contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"assignee@example.com\"}"), owner))
+				.andExpect(status().isCreated());
+		UUID assigneeId = userRepository.findByEmail("assignee@example.com").orElseThrow().getId();
+		String projectId = createProjectFor(owner, workspaceId);
+
+		MvcResult created = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{id}/issues", projectId)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"title\":\"Broken login\",\"description\":\"Users cannot sign in\","
+						+ "\"type\":\"BUG\",\"status\":\"TODO\",\"priority\":\"HIGH\","
+						+ "\"assigneeId\":\"" + assigneeId + "\",\"dueDate\":\"2027-01-10\"}"), owner))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.reporterName").value("Loc Nguyen"))
+				.andExpect(jsonPath("$.assigneeName").value("Assigned Person"))
+				.andExpect(jsonPath("$.status").value("TODO"))
+				.andReturn();
+		String issueId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asText();
+
+		mockMvc.perform(get("/api/v1/projects/{id}/issues", projectId)
+					.param("status", "TODO").param("priority", "HIGH").param("type", "BUG")
+					.param("assigneeId", assigneeId.toString()).param("search", "login")
+					.param("page", "0").param("size", "1").param("sort", "title").param("direction", "asc")
+					.cookie(owner))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalItems").value(1))
+				.andExpect(jsonPath("$.items[0].id").value(issueId));
+
+		Cookie assignee = loginAndGetAccessCookie("assignee@example.com");
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/issues/{id}", issueId)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"title\":\"Login issue fixed\",\"description\":null,\"type\":\"TASK\","
+						+ "\"status\":\"IN_PROGRESS\",\"priority\":\"MEDIUM\",\"assigneeId\":null,\"dueDate\":null}"), assignee))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.title").value("Login issue fixed"))
+				.andExpect(jsonPath("$.assigneeId").doesNotExist());
+		mockMvc.perform(authenticatedCsrfRequest(delete("/api/v1/issues/{id}", issueId), assignee))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(authenticatedCsrfRequest(delete("/api/v1/issues/{id}", issueId), owner))
+				.andExpect(status().isNoContent());
+		mockMvc.perform(get("/api/v1/projects/{id}/issues", projectId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(0));
+		mockMvc.perform(get("/api/v1/projects/{id}/issues", projectId)
+					.param("includeArchived", "true").cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(1));
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/issues/{id}/restore", issueId), owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.archivedAt").doesNotExist());
+	}
+
+	@Test
+	void issueAssigneeAndReadsAreRestrictedToWorkspaceMembers() throws Exception {
+		registerUser();
+		Cookie owner = loginAndGetAccessCookie();
+		String workspaceId = createWorkspaceFor(owner);
+		String projectId = createProjectFor(owner, workspaceId);
+		mockMvc.perform(registrationRequest("{\"email\":\"outsider@example.com\","
+				+ "\"password\":\"long-enough-password\",\"displayName\":\"Outsider\"}"))
+				.andExpect(status().isCreated());
+		UUID outsiderId = userRepository.findByEmail("outsider@example.com").orElseThrow().getId();
+		Cookie outsider = loginAndGetAccessCookie("outsider@example.com");
+
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{id}/issues", projectId)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"title\":\"Not allowed assignee\",\"type\":\"TASK\","
+						+ "\"assigneeId\":\"" + outsiderId + "\"}"), owner))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fieldErrors.assigneeId").exists());
+		MvcResult created = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{id}/issues", projectId)
+					.contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Private issue\",\"type\":\"TASK\"}"), owner))
+				.andExpect(status().isCreated()).andReturn();
+		String issueId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asText();
+		mockMvc.perform(get("/api/v1/issues/{id}", issueId).cookie(outsider))
+				.andExpect(status().isNotFound());
+		mockMvc.perform(get("/api/v1/projects/{id}/issues", projectId).param("status", "UNKNOWN").cookie(owner))
+				.andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+		mockMvc.perform(get("/api/v1/projects/{id}/issues", projectId).param("size", "101").cookie(owner))
+				.andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors.size").exists());
+	}
+
 	private String validRegistrationJson() {
 		return "{\"email\":\"Loc@Example.com\","
 				+ "\"password\":\"long-enough-password\",\"displayName\":\" Loc Nguyen \"}";
+	}
+
+	private String createWorkspaceFor(Cookie owner) throws Exception {
+		MvcResult created = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces")
+				.contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Issue workspace\"}"), owner))
+				.andExpect(status().isCreated()).andReturn();
+		return objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asText();
+	}
+
+	private String createProjectFor(Cookie owner, String workspaceId) throws Exception {
+		MvcResult created = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces/{id}/projects", workspaceId)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"name\":\"Issue project\",\"key\":\"ISS\"}"), owner))
+				.andExpect(status().isCreated()).andReturn();
+		return objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asText();
 	}
 
 	private MockHttpServletRequestBuilder registrationRequest(String json) throws Exception {

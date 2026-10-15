@@ -38,6 +38,22 @@ export type Project = {
   updatedAt: string
 }
 
+export type IssueType = 'TASK' | 'BUG' | 'STORY'
+export type IssueStatus = 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'DONE'
+export type IssuePriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+export type Issue = {
+  id: string; projectId: string; projectKey: string; title: string; description: string | null
+  type: IssueType; status: IssueStatus; priority: IssuePriority; reporterId: string
+  reporterName: string; assigneeId: string | null; assigneeName: string | null
+  dueDate: string | null; archivedAt: string | null; createdAt: string; updatedAt: string
+}
+export type IssuePage = { items: Issue[]; page: number; size: number; totalItems: number; totalPages: number }
+export type IssueFilters = {
+  status?: IssueStatus; priority?: IssuePriority; type?: IssueType; assigneeId?: string
+  unassigned?: boolean; search?: string; includeArchived?: boolean; page?: number
+  size?: number; sort?: string; direction?: 'asc' | 'desc'
+}
+
 export type RegistrationInput = {
   email: string
   password: string
@@ -212,6 +228,29 @@ export async function updateProjectStatus(projectId: string, status: ProjectStat
     method: 'PATCH',
     body: JSON.stringify({ status }),
   })
+}
+
+export async function listIssues(projectId: string, filters: IssueFilters = {}): Promise<IssuePage> {
+  const query = new URLSearchParams()
+  Object.entries(filters).forEach(([key, value]) => { if (value !== undefined && value !== '') query.set(key, String(value)) })
+  return request<IssuePage>(`/api/v1/projects/${encodeURIComponent(projectId)}/issues?${query}`)
+}
+
+export type IssueInput = {
+  title: string; description: string | null; type: IssueType; status: IssueStatus
+  priority: IssuePriority; assigneeId: string | null; dueDate: string | null
+}
+export async function createIssue(projectId: string, input: IssueInput): Promise<Issue> {
+  return request<Issue>(`/api/v1/projects/${encodeURIComponent(projectId)}/issues`, { method: 'POST', body: JSON.stringify(input) })
+}
+export async function updateIssue(issueId: string, input: IssueInput): Promise<Issue> {
+  return request<Issue>(`/api/v1/issues/${encodeURIComponent(issueId)}`, { method: 'PATCH', body: JSON.stringify(input) })
+}
+export async function archiveIssue(issueId: string): Promise<void> {
+  return request<void>(`/api/v1/issues/${encodeURIComponent(issueId)}`, { method: 'DELETE' })
+}
+export async function restoreIssue(issueId: string): Promise<Issue> {
+  return request<Issue>(`/api/v1/issues/${encodeURIComponent(issueId)}/restore`, { method: 'POST' })
 }
 
 export async function initializeSession(): Promise<User | null> {

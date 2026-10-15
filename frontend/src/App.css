@@ -196,6 +196,34 @@ textarea:focus, select:focus { border-color: #6877dc; box-shadow: 0 0 0 3px rgb(
 .project-edit-form { display: grid; grid-template-columns: 1fr 1.4fr auto; align-items: end; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #f0f2f6; }
 .project-edit-form input { min-height: 38px; font-size: 12px; }
 .project-edit-form textarea { min-height: 38px; padding: 8px; font-size: 12px; }
+.issues-panel { margin-top: 15px; padding-top: 13px; border-top: 1px solid #f0f2f6; }
+.issues-heading, .issue-pagination { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.issues-heading h5 { margin: 0; color: #263148; font-size: 12px; }
+.issues-heading p { margin: 4px 0 0; color: #8992a4; font-size: 10px; }
+.issue-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.issue-filters input:not([type=checkbox]), .issue-filters select { width: auto; min-height: 32px; padding: 5px 8px; font-size: 11px; }
+.issue-filters input:not([type=checkbox]) { flex: 1; min-width: 120px; }
+.issue-archived-toggle { display: flex; align-items: center; gap: 5px; color: #707b90; font-size: 10px; }
+.issue-archived-toggle input { width: auto; }
+.issue-form { display: grid; gap: 10px; padding: 12px; border: 1px solid #e9ecf4; border-radius: 10px; background: #fafbff; }
+.issue-form label { color: #59647a; font-size: 10px; }
+.issue-form input, .issue-form select, .issue-form textarea { min-height: 34px; padding: 6px 8px; font-size: 11px; }
+.issue-form-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.issue-list { display: grid; }
+.issue-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 2px; border-bottom: 1px solid #f0f2f6; }
+.issue-archived { opacity: .62; }
+.issue-main { display: grid; min-width: 0; gap: 4px; }
+.issue-main > div { display: flex; align-items: center; gap: 7px; }
+.issue-main strong { overflow: hidden; color: #303b52; font-size: 11px; text-overflow: ellipsis; }
+.issue-main small { color: #8992a4; font-size: 9px; }
+.issue-status-in_progress, .issue-status-in_review { color: #5865a8; background: #f0f2ff; }
+.issue-status-done { color: #387355; background: #edf8f1; }
+.priority-label { color: #7c879b; font-size: 9px; text-transform: capitalize; }
+.priority-high, .priority-urgent { color: #b34b50; }
+.issue-actions { display: flex; align-items: center; gap: 10px; }
+.issue-actions .text-action, .issue-actions .remove-member-button { white-space: nowrap; }
+.issue-pagination { justify-content: flex-end; margin-top: 10px; color: #818ba0; font-size: 10px; }
+.issue-pagination .secondary-button { min-height: 29px; padding: 0 9px; font-size: 10px; }
 
 @media (max-width: 560px) {
   .home-shell { width: min(100% - 28px, 980px); padding-top: 20px; }
@@ -213,4 +241,6 @@ textarea:focus, select:focus { border-color: #6877dc; box-shadow: 0 0 0 3px rgb(
   .project-description-field { grid-column: 1 / -1; }
   .project-create-form .primary-button { grid-column: 1 / -1; }
   .project-edit-form { grid-template-columns: 1fr; }
+  .issue-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .issue-row { align-items: flex-start; }
 }

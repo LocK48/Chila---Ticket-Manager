@@ -6,6 +6,9 @@ import java.util.TreeMap;
 import com.chila.backend.user.DuplicateEmailException;
 import com.chila.backend.user.UserNotFoundException;
 import com.chila.backend.auth.InvalidCredentialsException;
+import com.chila.backend.issue.ArchivedProjectException;
+import com.chila.backend.issue.IssueArchivedException;
+import com.chila.backend.issue.IssueNotFoundException;
 import com.chila.backend.project.DuplicateProjectKeyException;
 import com.chila.backend.project.ProjectNotFoundException;
 import com.chila.backend.workspace.MembershipConflictException;
@@ -19,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -44,6 +48,14 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
         return response(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "The request body is malformed or contains an invalid value.",
                 request, Map.of());
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidParameter(
+            MethodArgumentTypeMismatchException exception,
+            HttpServletRequest request) {
+        return response(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "A query parameter or path value has an invalid format.",
+                request, Map.of(exception.getName(), "Invalid value."));
     }
 
     @ExceptionHandler(InvalidInputException.class)
@@ -109,6 +121,21 @@ public class GlobalExceptionHandler {
             DuplicateProjectKeyException exception,
             HttpServletRequest request) {
         return response(HttpStatus.CONFLICT, "PROJECT_KEY_ALREADY_EXISTS", exception.getMessage(), request, Map.of());
+    }
+
+    @ExceptionHandler(IssueNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleIssueNotFound(
+            IssueNotFoundException exception,
+            HttpServletRequest request) {
+        return response(HttpStatus.NOT_FOUND, "ISSUE_NOT_FOUND", exception.getMessage(), request, Map.of());
+    }
+
+    @ExceptionHandler({IssueArchivedException.class, ArchivedProjectException.class})
+    public ResponseEntity<ApiErrorResponse> handleArchivedIssueConflict(
+            RuntimeException exception,
+            HttpServletRequest request) {
+        String code = exception instanceof IssueArchivedException ? "ISSUE_ARCHIVED" : "PROJECT_ARCHIVED";
+        return response(HttpStatus.CONFLICT, code, exception.getMessage(), request, Map.of());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

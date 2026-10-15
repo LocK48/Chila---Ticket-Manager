@@ -21,6 +21,7 @@ import {
   type WorkspaceMember,
 } from '../auth/api'
 import { useAuth } from '../auth/useAuth'
+import { IssuesPanel } from '../features/issues/IssuesPanel'
 
 type EditableRole = Exclude<MembershipRole, 'OWNER'>
 
@@ -449,6 +450,7 @@ export function HomePage() {
                     </label>
                     <button className="primary-button compact" disabled={busy}>{busy ? 'Saving…' : 'Save project'}</button>
                   </form>}
+                  <IssuesPanel projectId={project.id} members={members} canManage={canManage} active={membersWorkspaceId === selectedId && !membersLoading} projectActive={project.status === 'ACTIVE'} />
                 </article>)}
                 {!projects.length && <p className="empty-copy">No projects yet. Add one to get the workspace started.</p>}
               </div>}
