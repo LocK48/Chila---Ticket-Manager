@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import {
   ApiError, archiveIssue, createIssue, listIssues, restoreIssue, updateIssue,
   type Issue, type IssueInput, type IssuePriority, type IssueStatus, type IssueType,
@@ -16,9 +17,10 @@ const allowedTransitions: Record<IssueStatus, IssueStatus[]> = {
 }
 const blank: IssueInput = { title: '', description: null, type: 'TASK', status: 'TODO', priority: 'MEDIUM', assigneeId: null, dueDate: null }
 
-export function IssuesPanel({ projectId, members, canManage, active, projectActive }: {
-  projectId: string; members: WorkspaceMember[]; canManage: boolean; active: boolean; projectActive: boolean
+export function IssuesPanel({ projectId, members, canManage, active, projectActive, fixedAssigneeId }: {
+  projectId: string; members: WorkspaceMember[]; canManage: boolean; active: boolean; projectActive: boolean; fixedAssigneeId?: string
 }) {
+  const { workspaceId = '' } = useParams()
   const [issues, setIssues] = useState<Issue[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
@@ -26,7 +28,7 @@ export function IssuesPanel({ projectId, members, canManage, active, projectActi
   const [status, setStatus] = useState('')
   const [priority, setPriority] = useState('')
   const [type, setType] = useState('')
-  const [assigneeId, setAssigneeId] = useState('')
+  const [assigneeId, setAssigneeId] = useState(fixedAssigneeId ?? '')
   const [includeArchived, setIncludeArchived] = useState(false)
   const [sort, setSort] = useState('createdAt')
   const [direction, setDirection] = useState<'asc' | 'desc'>('desc')
@@ -41,11 +43,11 @@ export function IssuesPanel({ projectId, members, canManage, active, projectActi
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const result = await listIssues(projectId, { page, size: 10, search: search || undefined, status: (status || undefined) as IssueStatus | undefined, priority: (priority || undefined) as IssuePriority | undefined, type: (type || undefined) as IssueType | undefined, assigneeId: assigneeId && assigneeId !== 'unassigned' ? assigneeId : undefined, unassigned: assigneeId === 'unassigned' || undefined, includeArchived, sort, direction })
+      const result = await listIssues(projectId, { page, size: 10, search: search || undefined, status: (status || undefined) as IssueStatus | undefined, priority: (priority || undefined) as IssuePriority | undefined, type: (type || undefined) as IssueType | undefined, assigneeId: fixedAssigneeId ?? (assigneeId && assigneeId !== 'unassigned' ? assigneeId : undefined), unassigned: fixedAssigneeId ? undefined : assigneeId === 'unassigned' || undefined, includeArchived, sort, direction })
       setIssues(result.items); setTotal(result.totalItems); setError('')
     } catch (cause) { setError(cause instanceof ApiError ? cause.message : 'Could not load issues.') }
     finally { setLoading(false) }
-  }, [projectId, page, search, status, priority, type, assigneeId, includeArchived, sort, direction])
+  }, [projectId, page, search, status, priority, type, assigneeId, fixedAssigneeId, includeArchived, sort, direction])
   useEffect(() => {
     if (active) void Promise.resolve().then(load)
   }, [active, load])
@@ -85,7 +87,7 @@ export function IssuesPanel({ projectId, members, canManage, active, projectActi
       <select aria-label="Filter by status" value={status} onChange={(event) => { setPage(0); setStatus(event.target.value) }}><option value="">All statuses</option>{statuses.map((item) => <option key={item}>{item}</option>)}</select>
       <select aria-label="Filter by priority" value={priority} onChange={(event) => { setPage(0); setPriority(event.target.value) }}><option value="">All priorities</option>{priorities.map((item) => <option key={item}>{item}</option>)}</select>
       <select aria-label="Filter by type" value={type} onChange={(event) => { setPage(0); setType(event.target.value) }}><option value="">All types</option>{(['TASK', 'BUG', 'STORY'] as IssueType[]).map((item) => <option key={item}>{item}</option>)}</select>
-      <select aria-label="Filter by assignee" value={assigneeId} onChange={(event) => { setPage(0); setAssigneeId(event.target.value) }}><option value="">Anyone</option><option value="unassigned">Unassigned</option>{members.map((member) => <option key={member.userId} value={member.userId}>{member.displayName}</option>)}</select>
+      {!fixedAssigneeId && <select aria-label="Filter by assignee" value={assigneeId} onChange={(event) => { setPage(0); setAssigneeId(event.target.value) }}><option value="">Anyone</option><option value="unassigned">Unassigned</option>{members.map((member) => <option key={member.userId} value={member.userId}>{member.displayName}</option>)}</select>}
       <select aria-label="Sort issues by" value={sort} onChange={(event) => setSort(event.target.value)}><option value="createdAt">Created</option><option value="dueDate">Due date</option><option value="priority">Priority</option><option value="status">Status</option><option value="title">Title</option></select>
       <select aria-label="Sort direction" value={direction} onChange={(event) => setDirection(event.target.value as 'asc' | 'desc')}><option value="desc">Descending</option><option value="asc">Ascending</option></select>
       {canManage && <label className="issue-archived-toggle"><input type="checkbox" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} /> Archived</label>}
@@ -107,7 +109,7 @@ export function IssuesPanel({ projectId, members, canManage, active, projectActi
     </form>}
     {(loading || !active) && <p className="subtle issue-loading" role="status">{active ? 'Loading issues…' : 'Loading workspace access…'}</p>}
     <div className="issue-list">{active && !loading && issues.map((issue) => <article className={`issue-row${issue.archivedAt ? ' issue-archived' : ''}`} key={issue.id}>
-      <div className="issue-main"><div><span className={`status-pill issue-status-${issue.status.toLowerCase()}`}>{issue.status.replace('_', ' ').toLowerCase()}</span><span className={`priority-label priority-${issue.priority.toLowerCase()}`}>{issue.priority.toLowerCase()}</span></div><strong>{issue.title}</strong><small>{issue.type.toLowerCase()} · {issue.assigneeName ? `Assigned to ${issue.assigneeName}` : 'Unassigned'}{issue.dueDate ? ` · Due ${issue.dueDate}` : ''}</small></div>
+      <div className="issue-main"><div><span className={`status-pill issue-status-${issue.status.toLowerCase()}`}>{issue.status.replace('_', ' ').toLowerCase()}</span><span className={`priority-label priority-${issue.priority.toLowerCase()}`}>{issue.priority.toLowerCase()}</span></div><Link className="issue-title-link" to={`/workspaces/${workspaceId}/issues/${issue.id}`}>{issue.title}</Link><small>{issue.type.toLowerCase()} · {issue.assigneeName ? `Assigned to ${issue.assigneeName}` : 'Unassigned'}{issue.dueDate ? ` · Due ${issue.dueDate}` : ''}</small></div>
       <div className="issue-actions">{!issue.archivedAt && projectActive && <button className="text-action" onClick={() => startEdit(issue)}>Edit</button>}{canManage && (issue.archivedAt ? <button className="text-action" disabled={busy || !projectActive} onClick={() => void restore(issue)}>Restore</button> : projectActive && <button className="remove-member-button" disabled={busy} onClick={() => void archive(issue)}>Archive</button>)}</div>
       <details className="issue-detail" onToggle={(event) => {
         const opened = event.currentTarget.open

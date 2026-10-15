@@ -85,13 +85,17 @@ export class ApiError extends Error {
   }
 }
 
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
+const apiUrl = (path: string) => `${apiBaseUrl}${path}`
+const credentialsMode: RequestCredentials = apiBaseUrl ? 'include' : 'same-origin'
+
 function csrfCookie(): string | null {
   const cookie = document.cookie.split('; ').find((part) => part.startsWith('XSRF-TOKEN='))
   return cookie ? decodeURIComponent(cookie.slice('XSRF-TOKEN='.length)) : null
 }
 
 async function bootstrapCsrf(): Promise<void> {
-  const response = await fetch('/api/v1/auth/csrf', { credentials: 'same-origin' })
+  const response = await fetch(apiUrl('/api/v1/auth/csrf'), { credentials: credentialsMode })
   if (!response.ok) throw new ApiError('Could not prepare a secure request.', response.status)
 }
 
@@ -107,7 +111,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers.set('X-XSRF-TOKEN', token)
   }
 
-  const response = await fetch(path, { ...init, method, headers, credentials: 'same-origin' })
+  const response = await fetch(apiUrl(path), { ...init, method, headers, credentials: credentialsMode })
   if (response.status === 204) return undefined as T
 
   const body = (await response.json().catch(() => ({}))) as ApiErrorBody & T
@@ -238,6 +242,9 @@ export async function listIssues(projectId: string, filters: IssueFilters = {}):
   const query = new URLSearchParams()
   Object.entries(filters).forEach(([key, value]) => { if (value !== undefined && value !== '') query.set(key, String(value)) })
   return request<IssuePage>(`/api/v1/projects/${encodeURIComponent(projectId)}/issues?${query}`)
+}
+export async function getIssue(issueId: string): Promise<Issue> {
+  return request<Issue>(`/api/v1/issues/${encodeURIComponent(issueId)}`)
 }
 
 export type IssueInput = {

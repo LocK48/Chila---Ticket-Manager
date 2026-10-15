@@ -23,7 +23,8 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const notice = (location.state as { notice?: string } | null)?.notice
+  const locationState = location.state as { notice?: string; from?: { pathname?: string } } | null
+  const notice = locationState?.notice
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -31,7 +32,8 @@ export function LoginPage() {
     setBusy(true)
     try {
       await login(email, password)
-      navigate('/', { replace: true })
+      const destination = locationState?.from?.pathname
+      navigate(destination?.startsWith('/') && destination !== '/login' && destination !== '/register' ? destination : '/', { replace: true })
     } catch (cause) {
       setError(cause instanceof ApiError && cause.status === 401
         ? 'Email or password is incorrect.'
