@@ -210,7 +210,7 @@ textarea:focus, select:focus { border-color: #6877dc; box-shadow: 0 0 0 3px rgb(
 .issue-form input, .issue-form select, .issue-form textarea { min-height: 34px; padding: 6px 8px; font-size: 11px; }
 .issue-form-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .issue-list { display: grid; }
-.issue-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 2px; border-bottom: 1px solid #f0f2f6; }
+.issue-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 2px; border-bottom: 1px solid #f0f2f6; }
 .issue-archived { opacity: .62; }
 .issue-main { display: grid; min-width: 0; gap: 4px; }
 .issue-main > div { display: flex; align-items: center; gap: 7px; }
@@ -224,6 +224,35 @@ textarea:focus, select:focus { border-color: #6877dc; box-shadow: 0 0 0 3px rgb(
 .issue-actions .text-action, .issue-actions .remove-member-button { white-space: nowrap; }
 .issue-pagination { justify-content: flex-end; margin-top: 10px; color: #818ba0; font-size: 10px; }
 .issue-pagination .secondary-button { min-height: 29px; padding: 0 9px; font-size: 10px; }
+.issue-detail { grid-column: 1 / -1; color: #68748b; font-size: 10px; }
+.issue-detail summary { width: fit-content; color: #5362bd; font-weight: 700; cursor: pointer; }
+.issue-collaboration { margin-top: 10px; padding: 12px; border: 1px solid #edf0f5; border-radius: 10px; background: #fcfcfe; }
+.issue-collaboration h6 { margin: 0 0 9px; color: #303b52; font-size: 11px; }
+.comment-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; }
+.comment-form textarea { min-height: 50px; padding: 8px; font-size: 11px; }
+.comment-list { display: grid; margin-top: 8px; }
+.comment-item { padding: 8px 0; border-bottom: 1px solid #edf0f5; }
+.comment-item > div { display: flex; justify-content: space-between; gap: 8px; }
+.comment-item strong { color: #43506a; font-size: 10px; }
+.comment-item time, .activity-list time { display: block; margin-top: 3px; color: #99a1b0; font-size: 9px; }
+.comment-item p { margin: 5px 0 0; color: #657188; font-size: 10px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.issue-collaboration .activity-title { margin-top: 13px; }
+.activity-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.activity-list li { display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: 7px; color: #727d91; font-size: 10px; line-height: 1.4; }
+.activity-list li strong { color: #48546c; }
+.activity-dot { width: 6px; height: 6px; margin-top: 4px; border-radius: 50%; background: #8390dc; }
+.topbar-actions { display: flex; align-items: center; gap: 15px; }
+.notifications-wrap { position: relative; }
+.notification-trigger { display: flex; align-items: center; gap: 7px; padding: 7px 9px; border: 1px solid #e7eaf2; border-radius: 9px; color: #536078; background: #fff; font-size: 11px; font-weight: 650; cursor: pointer; }
+.notification-count { display: grid; min-width: 18px; height: 18px; place-items: center; padding: 0 4px; border-radius: 99px; color: #fff; background: #5968cc; font-size: 9px; }
+.notifications-popover { position: absolute; z-index: 10; top: calc(100% + 9px); right: 0; width: min(360px, calc(100vw - 32px)); max-height: 420px; overflow-y: auto; padding: 13px; border: 1px solid #e8ebf3; border-radius: 12px; background: #fff; box-shadow: 0 14px 36px #24304a1c; }
+.notifications-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; color: #303b52; font-size: 12px; }
+.notification-item { display: grid; grid-template-columns: 8px 1fr; gap: 8px; width: 100%; padding: 10px 2px; border: 0; border-bottom: 1px solid #f0f2f6; color: #68748b; background: transparent; text-align: left; cursor: pointer; }
+.notification-item strong { display: block; font-size: 10px; font-weight: 550; line-height: 1.45; }
+.notification-item small { display: block; margin-top: 4px; color: #969eac; font-size: 9px; }
+.notification-unread strong { color: #3d4961; font-weight: 700; }
+.notification-indicator { width: 6px; height: 6px; margin-top: 4px; border-radius: 50%; background: transparent; }
+.notification-unread .notification-indicator { background: #5968cc; }
 
 @media (max-width: 560px) {
   .home-shell { width: min(100% - 28px, 980px); padding-top: 20px; }
@@ -243,4 +272,8 @@ textarea:focus, select:focus { border-color: #6877dc; box-shadow: 0 0 0 3px rgb(
   .project-edit-form { grid-template-columns: 1fr; }
   .issue-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .issue-row { align-items: flex-start; }
+  .topbar-actions { gap: 8px; }
+  .notification-trigger { font-size: 0; }
+  .notification-trigger::before { content: '◉'; font-size: 14px; }
+  .notification-count { font-size: 9px; }
 }

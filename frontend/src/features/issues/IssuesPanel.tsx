@@ -4,6 +4,7 @@ import {
   type Issue, type IssueInput, type IssuePriority, type IssueStatus, type IssueType,
   type WorkspaceMember,
 } from '../../auth/api'
+import { IssueCollaboration } from './IssueCollaboration'
 
 const statuses: IssueStatus[] = ['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE']
 const priorities: IssuePriority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
@@ -22,6 +23,7 @@ export function IssuesPanel({ projectId, members, canManage, active, projectActi
   const [assigneeId, setAssigneeId] = useState('')
   const [includeArchived, setIncludeArchived] = useState(false)
   const [editing, setEditing] = useState('')
+  const [expandedIssueIds, setExpandedIssueIds] = useState<Set<string>>(() => new Set())
   const [draft, setDraft] = useState<IssueInput>(blank)
   const [creating, setCreating] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -90,6 +92,15 @@ export function IssuesPanel({ projectId, members, canManage, active, projectActi
     <div className="issue-list">{issues.map((issue) => <article className={`issue-row${issue.archivedAt ? ' issue-archived' : ''}`} key={issue.id}>
       <div className="issue-main"><div><span className={`status-pill issue-status-${issue.status.toLowerCase()}`}>{issue.status.replace('_', ' ').toLowerCase()}</span><span className={`priority-label priority-${issue.priority.toLowerCase()}`}>{issue.priority.toLowerCase()}</span></div><strong>{issue.title}</strong><small>{issue.type.toLowerCase()} · {issue.assigneeName ? `Assigned to ${issue.assigneeName}` : 'Unassigned'}{issue.dueDate ? ` · Due ${issue.dueDate}` : ''}</small></div>
       <div className="issue-actions">{!issue.archivedAt && projectActive && <button className="text-action" onClick={() => startEdit(issue)}>Edit</button>}{canManage && (issue.archivedAt ? <button className="text-action" disabled={busy || !projectActive} onClick={() => void restore(issue)}>Restore</button> : projectActive && <button className="remove-member-button" disabled={busy} onClick={() => void archive(issue)}>Archive</button>)}</div>
+      <details className="issue-detail" onToggle={(event) => {
+        const opened = event.currentTarget.open
+        setExpandedIssueIds((current) => {
+          const next = new Set(current)
+          if (opened) next.add(issue.id)
+          else next.delete(issue.id)
+          return next
+        })
+      }}><summary>Conversation &amp; history</summary>{expandedIssueIds.has(issue.id) && <IssueCollaboration issueId={issue.id} writable={!issue.archivedAt && projectActive} />}</details>
     </article>)}{!issues.length && <p className="empty-copy">No matching issues. Create one to start tracking work.</p>}</div>
     <div className="issue-pagination"><button className="secondary-button" disabled={page === 0} onClick={() => setPage((current) => current - 1)}>Previous</button><span>Page {page + 1}</span><button className="secondary-button" disabled={(page + 1) * 10 >= total} onClick={() => setPage((current) => current + 1)}>Next</button></div>
   </section>

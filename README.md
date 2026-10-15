@@ -90,7 +90,7 @@ npm run build
 3. Phase C: workspaces and membership (complete; backend APIs, schema, frontend workflows, and access checks verified).
 4. Phase D: projects (complete; schema, membership-protected APIs, frontend project workflows, and archive/restore implemented).
 5. Phase E: issues and task management (complete; scoped APIs, assignee validation, filtering/search/pagination, archive/restore, frontend workflows, and integration tests).
-6. Phase F: collaboration and auditability (comments, issue activity history, notifications, and status transition rules).
+6. Phase F: collaboration and auditability (complete; issue comments, field activity history, assignment/comment notifications, membership-scoped notification access, and status transition rules).
 7. Remaining frontend product polish, CI, and deployment.
 
 Each milestone will be verified before moving on.

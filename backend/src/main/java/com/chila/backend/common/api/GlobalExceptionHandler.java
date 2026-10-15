@@ -9,6 +9,8 @@ import com.chila.backend.auth.InvalidCredentialsException;
 import com.chila.backend.issue.ArchivedProjectException;
 import com.chila.backend.issue.IssueArchivedException;
 import com.chila.backend.issue.IssueNotFoundException;
+import com.chila.backend.issue.InvalidStatusTransitionException;
+import com.chila.backend.notification.NotificationNotFoundException;
 import com.chila.backend.project.DuplicateProjectKeyException;
 import com.chila.backend.project.ProjectNotFoundException;
 import com.chila.backend.workspace.MembershipConflictException;
@@ -128,6 +130,18 @@ public class GlobalExceptionHandler {
             IssueNotFoundException exception,
             HttpServletRequest request) {
         return response(HttpStatus.NOT_FOUND, "ISSUE_NOT_FOUND", exception.getMessage(), request, Map.of());
+    }
+
+    @ExceptionHandler(NotificationNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotificationNotFound(
+            NotificationNotFoundException exception, HttpServletRequest request) {
+        return response(HttpStatus.NOT_FOUND, "NOTIFICATION_NOT_FOUND", "Notification was not found.", request, Map.of());
+    }
+
+    @ExceptionHandler(InvalidStatusTransitionException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidStatusTransition(
+            InvalidStatusTransitionException exception, HttpServletRequest request) {
+        return response(HttpStatus.CONFLICT, "INVALID_STATUS_TRANSITION", exception.getMessage(), request, Map.of());
     }
 
     @ExceptionHandler({IssueArchivedException.class, ArchivedProjectException.class})

@@ -2,6 +2,7 @@ package com.chila.backend.issue;
 
 import java.util.UUID;
 
+import com.chila.backend.activity.IssueActivityService;
 import com.chila.backend.common.api.InvalidInputException;
 import com.chila.backend.issue.api.CreateIssueRequest;
 import com.chila.backend.issue.api.IssuePageResponse;
@@ -14,6 +15,7 @@ import com.chila.backend.project.ProjectStatus;
 import com.chila.backend.user.UserEntity;
 import com.chila.backend.user.UserNotFoundException;
 import com.chila.backend.user.UserRepository;
+import com.chila.backend.notification.NotificationService;
 import com.chila.backend.workspace.MembershipEntity;
 import com.chila.backend.workspace.MembershipRepository;
 import com.chila.backend.workspace.MembershipRole;
@@ -32,16 +34,22 @@ public class IssueService {
     private final ProjectRepository projectRepository;
     private final MembershipRepository membershipRepository;
     private final UserRepository userRepository;
+    private final IssueActivityService activityService;
+    private final NotificationService notificationService;
 
     public IssueService(
             IssueRepository issueRepository,
             ProjectRepository projectRepository,
             MembershipRepository membershipRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            IssueActivityService activityService,
+            NotificationService notificationService) {
         this.issueRepository = issueRepository;
         this.projectRepository = projectRepository;
         this.membershipRepository = membershipRepository;
         this.userRepository = userRepository;
+        this.activityService = activityService;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -56,6 +64,8 @@ public class IssueService {
                 request.status() == null ? IssueStatus.TODO : request.status(),
                 request.priority() == null ? IssuePriority.MEDIUM : request.priority(),
                 assignee, request.dueDate()));
+        activityService.record(issue, reporter, "CREATED", null, null, null);
+        notificationService.onAssignment(issue, assignee, actorId);
         return response(issue);
     }
 
@@ -116,8 +126,23 @@ public class IssueService {
         requireActiveProject(issue.getProject());
         if (issue.getArchivedAt() != null) throw new IssueArchivedException();
         UserEntity assignee = resolveAssignee(issue.getProject(), request.assigneeId());
+        validateTransition(issue.getStatus(), request.status());
+        UserEntity actor = userRepository.findById(actorId).orElseThrow(UserNotFoundException::new);
+        recordChange(issue, actor, "title", issue.getTitle(), request.title().trim());
+        recordChange(issue, actor, "description", issue.getDescription(), normalizeDescription(request.description()));
+        recordChange(issue, actor, "type", issue.getType().name(), request.type().name());
+        recordChange(issue, actor, "status", issue.getStatus().name(), request.status().name());
+        recordChange(issue, actor, "priority", issue.getPriority().name(), request.priority().name());
+        recordChange(issue, actor, "assignee", issue.getAssignee() == null ? null : issue.getAssignee().getDisplayName(),
+                assignee == null ? null : assignee.getDisplayName());
+        recordChange(issue, actor, "dueDate", issue.getDueDate() == null ? null : issue.getDueDate().toString(),
+                request.dueDate() == null ? null : request.dueDate().toString());
+        UUID previousAssigneeId = issue.getAssignee() == null ? null : issue.getAssignee().getId();
         issue.update(request.title().trim(), normalizeDescription(request.description()), request.type(),
                 request.status(), request.priority(), assignee, request.dueDate());
+        if (assignee != null && !assignee.getId().equals(previousAssigneeId)) {
+            notificationService.onAssignment(issue, assignee, actorId);
+        }
         return response(issue);
     }
 
@@ -126,6 +151,8 @@ public class IssueService {
         IssueEntity issue = requireIssue(issueId);
         requireManager(issue.getProject(), actorId);
         issue.archive();
+        UserEntity actor = userRepository.findById(actorId).orElseThrow(UserNotFoundException::new);
+        activityService.record(issue, actor, "ARCHIVED", null, null, null);
     }
 
     @Transactional
@@ -134,6 +161,8 @@ public class IssueService {
         requireManager(issue.getProject(), actorId);
         requireActiveProject(issue.getProject());
         issue.restore();
+        UserEntity actor = userRepository.findById(actorId).orElseThrow(UserNotFoundException::new);
+        activityService.record(issue, actor, "RESTORED", null, null, null);
         return response(issue);
     }
 
@@ -170,6 +199,23 @@ public class IssueService {
 
     private static void requireActiveProject(ProjectEntity project) {
         if (project.getStatus() != ProjectStatus.ACTIVE) throw new ArchivedProjectException();
+    }
+
+    private void recordChange(IssueEntity issue, UserEntity actor, String field, String oldValue, String newValue) {
+        if (!java.util.Objects.equals(oldValue, newValue)) {
+            activityService.record(issue, actor, "UPDATED", field, oldValue, newValue);
+        }
+    }
+
+    private static void validateTransition(IssueStatus from, IssueStatus to) {
+        if (from == to) return;
+        boolean allowed = switch (from) {
+            case TODO -> to == IssueStatus.IN_PROGRESS;
+            case IN_PROGRESS -> to == IssueStatus.TODO || to == IssueStatus.IN_REVIEW;
+            case IN_REVIEW -> to == IssueStatus.IN_PROGRESS || to == IssueStatus.DONE;
+            case DONE -> to == IssueStatus.IN_PROGRESS;
+        };
+        if (!allowed) throw new InvalidStatusTransitionException();
     }
 
     private static String normalizeDescription(String description) {

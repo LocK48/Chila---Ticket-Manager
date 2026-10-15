@@ -48,6 +48,10 @@ export type Issue = {
   dueDate: string | null; archivedAt: string | null; createdAt: string; updatedAt: string
 }
 export type IssuePage = { items: Issue[]; page: number; size: number; totalItems: number; totalPages: number }
+export type IssueComment = { id: string; issueId: string; authorId: string; authorName: string; body: string; createdAt: string }
+export type IssueActivity = { id: string; issueId: string; actorId: string; actorName: string; action: string; fieldName: string | null; oldValue: string | null; newValue: string | null; createdAt: string }
+export type Notification = { id: string; issueId: string | null; issueTitle: string | null; eventType: string; message: string; createdAt: string; readAt: string | null }
+export type PageResult<T> = { items: T[]; page: number; size: number; totalItems: number; totalPages: number }
 export type IssueFilters = {
   status?: IssueStatus; priority?: IssuePriority; type?: IssueType; assigneeId?: string
   unassigned?: boolean; search?: string; includeArchived?: boolean; page?: number
@@ -251,6 +255,22 @@ export async function archiveIssue(issueId: string): Promise<void> {
 }
 export async function restoreIssue(issueId: string): Promise<Issue> {
   return request<Issue>(`/api/v1/issues/${encodeURIComponent(issueId)}/restore`, { method: 'POST' })
+}
+
+export async function listIssueComments(issueId: string): Promise<PageResult<IssueComment>> {
+  return request<PageResult<IssueComment>>(`/api/v1/issues/${encodeURIComponent(issueId)}/comments?size=50`)
+}
+export async function addIssueComment(issueId: string, body: string): Promise<IssueComment> {
+  return request<IssueComment>(`/api/v1/issues/${encodeURIComponent(issueId)}/comments`, { method: 'POST', body: JSON.stringify({ body }) })
+}
+export async function listIssueActivities(issueId: string): Promise<PageResult<IssueActivity>> {
+  return request<PageResult<IssueActivity>>(`/api/v1/issues/${encodeURIComponent(issueId)}/activities?size=50`)
+}
+export async function listNotifications(unreadOnly = false): Promise<PageResult<Notification>> {
+  return request<PageResult<Notification>>(`/api/v1/users/me/notifications?size=20&unreadOnly=${unreadOnly}`)
+}
+export async function markNotificationRead(notificationId: string): Promise<Notification> {
+  return request<Notification>(`/api/v1/notifications/${encodeURIComponent(notificationId)}/read`, { method: 'PATCH' })
 }
 
 export async function initializeSession(): Promise<User | null> {

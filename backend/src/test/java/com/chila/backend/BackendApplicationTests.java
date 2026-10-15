@@ -520,6 +520,69 @@ class BackendApplicationTests {
 				.andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors.size").exists());
 	}
 
+	@Test
+	void commentsActivityNotificationsAndStatusTransitionsRespectIssueAccess() throws Exception {
+		registerUser();
+		Cookie owner = loginAndGetAccessCookie();
+		String workspaceId = createWorkspaceFor(owner);
+		String projectId = createProjectFor(owner, workspaceId);
+		mockMvc.perform(registrationRequest("{\"email\":\"collaborator@example.com\","
+				+ "\"password\":\"long-enough-password\",\"displayName\":\"Collaborator\"}"))
+				.andExpect(status().isCreated());
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces/{id}/members", workspaceId)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"email\":\"collaborator@example.com\",\"role\":\"MEMBER\"}"), owner))
+				.andExpect(status().isCreated());
+		UUID collaboratorId = userRepository.findByEmail("collaborator@example.com").orElseThrow().getId();
+		Cookie collaborator = loginAndGetAccessCookie("collaborator@example.com");
+		MvcResult created = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{id}/issues", projectId)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"title\":\"Collaborative issue\",\"type\":\"TASK\",\"assigneeId\":\"" + collaboratorId + "\"}"), owner))
+				.andExpect(status().isCreated()).andReturn();
+		String issueId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asText();
+		mockMvc.perform(registrationRequest("{\"email\":\"phasef-outsider@example.com\","
+				+ "\"password\":\"long-enough-password\",\"displayName\":\"Outsider\"}"))
+				.andExpect(status().isCreated());
+		Cookie outsider = loginAndGetAccessCookie("phasef-outsider@example.com");
+		mockMvc.perform(get("/api/v1/issues/{id}/comments", issueId).cookie(outsider))
+				.andExpect(status().isNotFound());
+		mockMvc.perform(get("/api/v1/issues/{id}/activities", issueId).cookie(outsider))
+				.andExpect(status().isNotFound());
+		mockMvc.perform(get("/api/v1/users/me/notifications").param("unreadOnly", "true").cookie(collaborator))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(1))
+				.andExpect(jsonPath("$.items[0].eventType").value("ISSUE_ASSIGNED"));
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/issues/{id}/comments", issueId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"body\":\"I will take a look\"}"), collaborator))
+				.andExpect(status().isCreated()).andExpect(jsonPath("$.authorName").value("Collaborator"));
+		mockMvc.perform(get("/api/v1/issues/{id}/comments", issueId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(1));
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/issues/{id}", issueId)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"title\":\"Collaborative issue\",\"type\":\"TASK\",\"status\":\"DONE\","
+						+ "\"priority\":\"MEDIUM\",\"assigneeId\":\"" + collaboratorId + "\"}"), collaborator))
+				.andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("INVALID_STATUS_TRANSITION"));
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/issues/{id}", issueId)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"title\":\"Collaborative issue\",\"type\":\"TASK\",\"status\":\"IN_PROGRESS\","
+						+ "\"priority\":\"MEDIUM\",\"assigneeId\":\"" + collaboratorId + "\"}"), collaborator))
+				.andExpect(status().isOk());
+		mockMvc.perform(get("/api/v1/issues/{id}/activities", issueId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(3));
+		mockMvc.perform(get("/api/v1/users/me/notifications").param("unreadOnly", "true").cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(1))
+				.andExpect(jsonPath("$.items[0].eventType").value("ISSUE_COMMENTED"));
+		String notificationId = objectMapper.readTree(mockMvc.perform(get("/api/v1/users/me/notifications").cookie(owner))
+				.andReturn().getResponse().getContentAsString()).get("items").get(0).get("id").asText();
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/notifications/{id}/read", notificationId), collaborator))
+				.andExpect(status().isNotFound());
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/notifications/{id}/read", notificationId), owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.readAt").exists());
+		mockMvc.perform(authenticatedCsrfRequest(delete("/api/v1/workspaces/{workspaceId}/members/{userId}", workspaceId, collaboratorId), owner))
+				.andExpect(status().isNoContent());
+		mockMvc.perform(get("/api/v1/users/me/notifications").param("unreadOnly", "true").cookie(collaborator))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(0));
+	}
+
 	private String validRegistrationJson() {
 		return "{\"email\":\"Loc@Example.com\","
 				+ "\"password\":\"long-enough-password\",\"displayName\":\" Loc Nguyen \"}";

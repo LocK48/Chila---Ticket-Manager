@@ -22,6 +22,7 @@ import {
 } from '../auth/api'
 import { useAuth } from '../auth/useAuth'
 import { IssuesPanel } from '../features/issues/IssuesPanel'
+import { NotificationsPanel } from '../features/notifications/NotificationsPanel'
 
 type EditableRole = Exclude<MembershipRole, 'OWNER'>
 
@@ -333,7 +334,7 @@ export function HomePage() {
     <main className="home-shell">
       <header className="topbar">
         <Link className="brand" to="/">chila</Link>
-        <button className="text-button" onClick={signOut}>Sign out</button>
+        <div className="topbar-actions"><NotificationsPanel /><button className="text-button" onClick={signOut}>Sign out</button></div>
       </header>
       <section className="welcome-panel">
         <div>
