@@ -7,8 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -16,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.chila.backend.user.UserEntity;
 import com.chila.backend.user.UserRepository;
+import com.chila.backend.workspace.WorkspaceRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,6 +52,9 @@ class BackendApplicationTests {
 	private UserRepository userRepository;
 
 	@Autowired
+	private WorkspaceRepository workspaceRepository;
+
+	@Autowired
 	private PasswordEncoder passwordEncoder;
 
 	@Autowired
@@ -63,7 +69,8 @@ class BackendApplicationTests {
 
 	@BeforeEach
 	void clearUsers() {
-		userRepository.deleteAll();
+		workspaceRepository.deleteAllInBatch();
+		userRepository.deleteAllInBatch();
 	}
 
 	@Test
@@ -236,6 +243,103 @@ class BackendApplicationTests {
 				.andExpect(cookie().maxAge("CHILA_ACCESS", 0));
 	}
 
+	@Test
+	void workspaceCreationCreatesOwnerAndReturnsOnlyTheCallersWorkspaces() throws Exception {
+		registerUser();
+		Cookie owner = loginAndGetAccessCookie();
+		MvcResult created = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"name\":\"  Chila Team  \",\"description\":\" Planning workspace \"}"), owner))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.name").value("Chila Team"))
+				.andExpect(jsonPath("$.description").value("Planning workspace"))
+				.andExpect(jsonPath("$.role").value("OWNER"))
+				.andReturn();
+		String workspaceId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asText();
+
+		mockMvc.perform(get("/api/v1/workspaces").cookie(owner))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].id").value(workspaceId))
+				.andExpect(jsonPath("$[0].role").value("OWNER"));
+		mockMvc.perform(get("/api/v1/workspaces/{id}/members", workspaceId).cookie(owner))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].email").value("loc@example.com"))
+				.andExpect(jsonPath("$[0].role").value("OWNER"))
+				.andExpect(jsonPath("$[0].passwordHash").doesNotExist());
+	}
+
+	@Test
+	void nonMembersCannotDiscoverOrReadAWorkspace() throws Exception {
+		registerUser();
+		Cookie owner = loginAndGetAccessCookie();
+		MvcResult created = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces")
+					.contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Private\"}"), owner))
+				.andExpect(status().isCreated()).andReturn();
+		String workspaceId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asText();
+
+		mockMvc.perform(registrationRequest("{\"email\":\"other@example.com\","
+				+ "\"password\":\"long-enough-password\",\"displayName\":\"Other User\"}"))
+				.andExpect(status().isCreated());
+		Cookie otherUser = loginAndGetAccessCookie("other@example.com");
+		mockMvc.perform(get("/api/v1/workspaces/{id}", workspaceId).cookie(otherUser))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("WORKSPACE_NOT_FOUND"));
+		mockMvc.perform(get("/api/v1/workspaces").cookie(otherUser))
+				.andExpect(status().isOk()).andExpect(content().json("[]"));
+	}
+
+	@Test
+	void ownerCanAddAndPromoteAMemberButMemberCannotManageWorkspace() throws Exception {
+		registerUser();
+		Cookie owner = loginAndGetAccessCookie();
+		MvcResult created = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces")
+					.contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Team\"}"), owner))
+				.andExpect(status().isCreated()).andReturn();
+		String workspaceId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asText();
+		mockMvc.perform(registrationRequest("{\"email\":\"member@example.com\","
+				+ "\"password\":\"long-enough-password\",\"displayName\":\"Member User\"}"))
+				.andExpect(status().isCreated());
+
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces/{id}/members", workspaceId)
+					.contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"MEMBER@EXAMPLE.COM\"}"), owner))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.role").value("MEMBER"));
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces/{id}/members", workspaceId)
+					.contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"member@example.com\"}"), owner))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("MEMBERSHIP_ALREADY_EXISTS"));
+
+		Cookie member = loginAndGetAccessCookie("member@example.com");
+		mockMvc.perform(get("/api/v1/workspaces/{id}", workspaceId).cookie(member))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.role").value("MEMBER"));
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/workspaces/{id}", workspaceId)
+					.contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Changed\"}"), member))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/workspaces/{workspaceId}/members/{userId}",
+					workspaceId, userRepository.findByEmail("member@example.com").orElseThrow().getId())
+					.contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"ADMIN\"}"), owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.role").value("ADMIN"));
+	}
+
+	@Test
+	void ownerCannotBeRemovedAndOnlyOwnerCanDeleteWorkspace() throws Exception {
+		registerUser();
+		Cookie owner = loginAndGetAccessCookie();
+		MvcResult created = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces")
+					.contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Team\"}"), owner))
+				.andExpect(status().isCreated()).andReturn();
+		String workspaceId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asText();
+		String ownerId = userRepository.findByEmail("loc@example.com").orElseThrow().getId().toString();
+
+		mockMvc.perform(authenticatedCsrfRequest(delete("/api/v1/workspaces/{workspaceId}/members/{userId}",
+					workspaceId, ownerId), owner))
+				.andExpect(status().isBadRequest());
+		mockMvc.perform(authenticatedCsrfRequest(delete("/api/v1/workspaces/{id}", workspaceId), owner))
+				.andExpect(status().isNoContent());
+		mockMvc.perform(get("/api/v1/workspaces/{id}", workspaceId).cookie(owner))
+				.andExpect(status().isNotFound());
+	}
+
 	private String validRegistrationJson() {
 		return "{\"email\":\"Loc@Example.com\","
 				+ "\"password\":\"long-enough-password\",\"displayName\":\" Loc Nguyen \"}";
@@ -263,13 +367,26 @@ class BackendApplicationTests {
 	}
 
 	private Cookie loginAndGetAccessCookie() throws Exception {
+		return loginAndGetAccessCookie("loc@example.com");
+	}
+
+	private Cookie loginAndGetAccessCookie(String email) throws Exception {
 		MvcResult result = mockMvc.perform(csrfRequest(post("/api/v1/auth/login")
 				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"email\":\"loc@example.com\",\"password\":\"long-enough-password\"}")))
+				.content("{\"email\":\"" + email + "\",\"password\":\"long-enough-password\"}")))
 				.andExpect(status().isOk()).andReturn();
 		Cookie cookie = result.getResponse().getCookie("CHILA_ACCESS");
 		assertNotNull(cookie);
 		return cookie;
+	}
+
+	private MockHttpServletRequestBuilder authenticatedCsrfRequest(
+			MockHttpServletRequestBuilder request, Cookie accessCookie) throws Exception {
+		MvcResult bootstrap = mockMvc.perform(get("/api/v1/auth/csrf"))
+				.andExpect(status().isNoContent()).andReturn();
+		Cookie csrfCookie = bootstrap.getResponse().getCookie("XSRF-TOKEN");
+		assertNotNull(csrfCookie);
+		return request.cookie(accessCookie, csrfCookie).header("X-XSRF-TOKEN", csrfCookie.getValue());
 	}
 
 	private record RegistrationPayload(String email, String password, String displayName) {

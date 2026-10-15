@@ -2,7 +2,7 @@
 
 Chila is a team project and issue management platform. This repository is being built incrementally as a Java full-stack portfolio project.
 
-## Current milestone: Phase B authentication
+## Current milestone: Phase C workspaces and memberships
 
 - Java 21 and Spring Boot 3.5 backend.
 - React, TypeScript, and Vite frontend.
@@ -12,8 +12,11 @@ Chila is a team project and issue management platform. This repository is being 
 - PostgreSQL connects through Spring Data JPA; Flyway applies SQL migrations and Hibernate validates the schema.
 - Registration and login use BCrypt password hashes and short-lived HttpOnly JWT cookies with CSRF protection.
 - Protected profile pages support current-user retrieval, display-name updates, and logout.
+- Workspaces can be created, listed, viewed, updated, and deleted through authenticated APIs.
+- Workspace creation grants the creator the `OWNER` role. Members can be added by registered email and assigned `ADMIN` or `MEMBER` roles.
+- Workspace membership is enforced on every workspace endpoint. Non-members receive `404` for workspace-specific resources.
 
-Workspace membership, projects, issues, and CI are planned; they are not implemented yet.
+Workspace and membership API/schema decisions are documented in [docs/phase-c-design.md](docs/phase-c-design.md). Workspace frontend workflows, projects, issues, and CI are still planned.
 
 ## Prerequisites
 
@@ -82,7 +85,7 @@ npm run build
 
 1. Foundation: local backend/frontend startup, health check, CORS, and PostgreSQL service. (Complete.)
 2. Phase B: PostgreSQL/Flyway foundation, authentication, and user management. (Complete.)
-3. Phase C: workspaces and membership.
+3. Phase C: workspaces and membership (backend APIs/schema implemented; frontend workflows remain).
 4. Projects and issue workflows.
 5. Frontend product workflows, tests, CI, and deployment.
 

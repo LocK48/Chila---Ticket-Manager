@@ -6,6 +6,9 @@ import java.util.TreeMap;
 import com.chila.backend.user.DuplicateEmailException;
 import com.chila.backend.user.UserNotFoundException;
 import com.chila.backend.auth.InvalidCredentialsException;
+import com.chila.backend.workspace.MembershipConflictException;
+import com.chila.backend.workspace.WorkspaceAccessDeniedException;
+import com.chila.backend.workspace.WorkspaceNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +63,27 @@ public class GlobalExceptionHandler {
             UserNotFoundException exception,
             HttpServletRequest request) {
         return response(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", exception.getMessage(), request, Map.of());
+    }
+
+    @ExceptionHandler(WorkspaceNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleWorkspaceNotFound(
+            WorkspaceNotFoundException exception,
+            HttpServletRequest request) {
+        return response(HttpStatus.NOT_FOUND, "WORKSPACE_NOT_FOUND", exception.getMessage(), request, Map.of());
+    }
+
+    @ExceptionHandler(MembershipConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleMembershipConflict(
+            MembershipConflictException exception,
+            HttpServletRequest request) {
+        return response(HttpStatus.CONFLICT, "MEMBERSHIP_ALREADY_EXISTS", exception.getMessage(), request, Map.of());
+    }
+
+    @ExceptionHandler(WorkspaceAccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleWorkspaceAccessDenied(
+            WorkspaceAccessDeniedException exception,
+            HttpServletRequest request) {
+        return response(HttpStatus.FORBIDDEN, "ACCESS_DENIED", exception.getMessage(), request, Map.of());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
