@@ -6,7 +6,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': 'http://localhost:8080',
+      '/api': {
+        target: process.env.CHILA_API_TARGET ?? 'http://localhost:8080',
+        changeOrigin: true,
+      },
     },
   },
 })
