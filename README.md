@@ -2,17 +2,18 @@
 
 Chila is a team project and issue management platform. This repository is being built incrementally as a Java full-stack portfolio project.
 
-## Current milestone: local foundation
+## Current milestone: Phase B authentication
 
 - Java 21 and Spring Boot 3.5 backend.
 - React, TypeScript, and Vite frontend.
 - `GET /api/v1/health` reports backend status.
 - Vite proxies `/api` requests to the backend on `localhost:8080`.
 - CORS allows the local Vite origin and can be changed with `CHILA_CORS_ALLOWED_ORIGIN`.
-- Docker Compose provides a persistent local PostgreSQL database for the next milestone.
-- The frontend displays whether the backend health endpoint responds.
+- PostgreSQL connects through Spring Data JPA; Flyway applies SQL migrations and Hibernate validates the schema.
+- Registration and login use BCrypt password hashes and short-lived HttpOnly JWT cookies with CSRF protection.
+- Protected profile pages support current-user retrieval, display-name updates, and logout.
 
-Authentication, database integration and migrations, workspaces, projects, issues, and CI are planned; they are not implemented yet.
+Workspace membership, projects, issues, and CI are planned; they are not implemented yet.
 
 ## Prerequisites
 
@@ -30,7 +31,7 @@ docker compose up -d postgres
 docker compose ps
 ```
 
-The sample `.env` values are for local development only. The application does not connect to PostgreSQL yet; that comes with the database-design milestone. Spring reads `CHILA_CORS_ALLOWED_ORIGIN` from the backend process environment; Compose reads database values from the root `.env` file.
+The sample `.env` values are for local development only. Before starting the backend, replace `CHILA_JWT_SECRET` in `.env` with a private Base64-encoded secret of at least 32 bytes (for example, generate one with `openssl rand -base64 32`). Never commit `.env` or use a development key in production. The backend imports the root `.env` file when run from `backend`; Compose reads the same database settings. Flyway applies migrations automatically when the backend starts.
 
 In one terminal, start the backend:
 
@@ -44,6 +45,8 @@ Check `http://localhost:8080/api/v1/health`. A successful response looks like:
 ```json
 {"status":"UP","application":"Chila Backend"}
 ```
+
+To register or log in through the API, first call `GET /api/v1/auth/csrf` and keep the returned `XSRF-TOKEN` cookie. Send it and its value in the `X-XSRF-TOKEN` header on `POST /api/v1/auth/register` or `POST /api/v1/auth/login`. Login returns a safe user object and sets a short-lived, HttpOnly access cookie. Re-fetch the CSRF cookie after login and logout before another state-changing request. Use `GET /api/v1/users/me` to check the session, `PATCH /api/v1/users/me` to update the display name, and `POST /api/v1/auth/logout` to clear the browser cookie. Logout does not revoke a copied JWT; it expires after 15 minutes. The full contract is in [docs/phase-b-design.md](docs/phase-b-design.md).
 
 In another terminal, start the frontend:
 
@@ -73,9 +76,9 @@ npm run build
 
 ## Roadmap
 
-1. Foundation: local backend/frontend startup, health check, CORS, and PostgreSQL service.
-2. Database design: ERD, constraints, and Flyway migration review.
-3. Authentication and workspace membership.
+1. Foundation: local backend/frontend startup, health check, CORS, and PostgreSQL service. (Complete.)
+2. Phase B: PostgreSQL/Flyway foundation, authentication, and user management. (Complete.)
+3. Phase C: workspaces and membership.
 4. Projects and issue workflows.
 5. Frontend product workflows, tests, CI, and deployment.
 

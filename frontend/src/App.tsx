@@ -1,49 +1,42 @@
-import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { AuthProvider } from './auth/AuthContext'
+import { useAuth } from './auth/useAuth'
+import { HomePage } from './pages/HomePage'
+import { LoginPage, RegisterPage } from './pages/EntryPages'
 import './App.css'
 
-type HealthResponse = {
-  status: string
-  application: string
+function ProtectedHome() {
+  const { user, loading, error } = useAuth()
+  if (loading) return <main className="loading-screen">Opening your workspace…</main>
+  if (error) return <main className="loading-screen form-error" role="alert">{error}</main>
+  return user ? <HomePage /> : <Navigate to="/login" replace />
+}
+
+function GuestOnly({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth()
+  if (loading) return <main className="loading-screen">Opening your workspace…</main>
+  return user ? <Navigate to="/" replace /> : children
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<ProtectedHome />} />
+      <Route path="/login" element={<GuestOnly><LoginPage /></GuestOnly>} />
+      <Route path="/register" element={<GuestOnly><RegisterPage /></GuestOnly>} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
 }
 
 function App() {
-  const [health, setHealth] = useState<HealthResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const controller = new AbortController()
-
-    fetch('/api/v1/health', { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error(`Backend returned ${response.status}`)
-        return response.json() as Promise<HealthResponse>
-      })
-      .then(setHealth)
-      .catch((cause: unknown) => {
-        if (cause instanceof DOMException && cause.name === 'AbortError') return
-        setError(cause instanceof Error ? cause.message : 'Could not reach the backend')
-      })
-
-    return () => controller.abort()
-  }, [])
-
   return (
-    <main className="status-card">
-      <p className="eyebrow">CHILA · FOUNDATION</p>
-      <h1>Team work, in one place.</h1>
-      <p className="intro">The project foundation is running. Next up: database design.</p>
-      <section className="connection" aria-live="polite">
-        <span className={`indicator ${health ? 'online' : error ? 'offline' : ''}`} />
-        <div>
-          <strong>Backend connection</strong>
-          <p>
-            {health
-              ? `${health.application} · ${health.status}`
-              : error ?? 'Checking the health endpoint…'}
-          </p>
-        </div>
-      </section>
-    </main>
+    <BrowserRouter>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </BrowserRouter>
   )
 }
 
