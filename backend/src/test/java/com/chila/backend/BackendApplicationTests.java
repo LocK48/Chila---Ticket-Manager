@@ -19,17 +19,27 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.chila.backend.user.UserEntity;
 import com.chila.backend.user.UserRepository;
+import com.chila.backend.verification.EmailDelivery;
+import com.chila.backend.verification.EmailVerificationCodeRepository;
+import com.chila.backend.verification.EmailVerificationPurpose;
 import com.chila.backend.workspace.WorkspaceRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.servlet.http.Cookie;
 import java.util.UUID;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
@@ -42,6 +52,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers
+@Import(BackendApplicationTests.TestMailConfiguration.class)
 class BackendApplicationTests {
 
 	@Container
@@ -54,6 +65,9 @@ class BackendApplicationTests {
 	private UserRepository userRepository;
 
 	@Autowired
+	private EmailVerificationCodeRepository emailVerificationCodeRepository;
+
+	@Autowired
 	private WorkspaceRepository workspaceRepository;
 
 	@Autowired
@@ -61,6 +75,9 @@ class BackendApplicationTests {
 
 	@Autowired
 	private ObjectMapper objectMapper;
+
+	@Autowired
+	private TestEmailDelivery testEmailDelivery;
 
 	@DynamicPropertySource
 	static void configureDatabase(DynamicPropertyRegistry registry) {
@@ -72,7 +89,9 @@ class BackendApplicationTests {
 	@BeforeEach
 	void clearUsers() {
 		workspaceRepository.deleteAllInBatch();
+		emailVerificationCodeRepository.deleteAllInBatch();
 		userRepository.deleteAllInBatch();
+		testEmailDelivery.clear();
 	}
 
 	@Test
@@ -109,6 +128,27 @@ class BackendApplicationTests {
 					.content(validRegistrationJson()))
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.code").value("CSRF_REJECTED"));
+	}
+
+	@Test
+	void passwordCanOnlyBeChangedWithTheEmailCodeSentToTheSignedInUser() throws Exception {
+		registerUser();
+		Cookie accessCookie = loginAndGetAccessCookie();
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/users/me/password-otp"), accessCookie))
+				.andExpect(status().isAccepted());
+
+		String code = testEmailDelivery.codeFor("loc@example.com");
+		mockMvc.perform(authenticatedCsrfRequest(put("/api/v1/users/me/password")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(objectMapper.writeValueAsString(new PasswordChangePayload(code, "a-new-long-password"))), accessCookie))
+				.andExpect(status().isNoContent());
+
+		mockMvc.perform(csrfRequest(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+					.content("{\"email\":\"loc@example.com\",\"password\":\"long-enough-password\"}")))
+				.andExpect(status().isUnauthorized());
+		mockMvc.perform(csrfRequest(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+					.content("{\"email\":\"loc@example.com\",\"password\":\"a-new-long-password\"}")))
+				.andExpect(status().isOk());
 	}
 
 	@Test
@@ -914,9 +954,21 @@ class BackendApplicationTests {
 	}
 
 	private MockHttpServletRequestBuilder registrationRequest(String json) throws Exception {
+		ObjectNode body = (ObjectNode) objectMapper.readTree(json);
+		String email = body.path("email").asText();
+		String code = "000000";
+		if (email.contains("@")) {
+			mockMvc.perform(csrfRequest(post("/api/v1/auth/registration-otp")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(objectMapper.writeValueAsString(Map.of("email", email)))))
+				.andExpect(status().isAccepted());
+			String issuedCode = testEmailDelivery.findCodeFor(email);
+			if (issuedCode != null) code = issuedCode;
+		}
+		body.put("verificationCode", code);
 		return csrfRequest(post("/api/v1/auth/register")
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(json));
+				.content(body.toString()));
 	}
 
 	private MockHttpServletRequestBuilder csrfRequest(MockHttpServletRequestBuilder request) throws Exception {
@@ -958,5 +1010,40 @@ class BackendApplicationTests {
 	}
 
 	private record RegistrationPayload(String email, String password, String displayName) {
+	}
+
+	private record PasswordChangePayload(String verificationCode, String newPassword) {
+	}
+
+	@TestConfiguration
+	static class TestMailConfiguration {
+		@Bean
+		@Primary
+		TestEmailDelivery testEmailDelivery() {
+			return new TestEmailDelivery();
+		}
+	}
+
+	static class TestEmailDelivery implements EmailDelivery {
+		private final Map<String, String> codes = new ConcurrentHashMap<>();
+
+		@Override
+		public void sendVerificationCode(String email, String code, EmailVerificationPurpose purpose) {
+			codes.put(email.toLowerCase(java.util.Locale.ROOT), code);
+		}
+
+		String findCodeFor(String email) {
+			return codes.get(email.toLowerCase(java.util.Locale.ROOT));
+		}
+
+		String codeFor(String email) {
+			String code = findCodeFor(email);
+			assertNotNull(code, "Expected a verification email for " + email);
+			return code;
+		}
+
+		void clear() {
+			codes.clear();
+		}
 	}
 }
