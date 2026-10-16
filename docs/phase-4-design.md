@@ -47,4 +47,4 @@ The issue page lets users save the current criteria and select a saved filter. S
 
 Statuses themselves remain fixed; customization covers transitions only. Filter criteria do not yet include labels, and the current issue domain has no label model. Saved filter definitions are applied through the issue list query rather than compiled into a separate query language. V9 has no destructive rollback, because downgrade would discard user workflow and filter data.
 
-Frontend lint and production build pass. Backend main/test sources compile, and the five existing non-container unit tests pass. The Phase 4 Testcontainers integration test is present and compiles, but PostgreSQL migration/integration execution still needs Docker Engine. Browser interaction checks have not been performed.
+Frontend lint and production build pass. The full backend suite passes: 32 tests, including the Phase 4 workflow/filter integration test, against PostgreSQL 17 with Testcontainers. Flyway successfully applied all nine migrations, including V9. Browser interaction checks have not been performed.

@@ -693,7 +693,10 @@ class BackendApplicationTests {
 		mockMvc.perform(get("/api/v1/projects/{id}/releases", projectId).cookie(owner))
 				.andExpect(status().isOk()).andExpect(jsonPath("$[0].issueCount").value(1));
 
-		String otherProjectId = createProjectFor(owner, workspaceId);
+		MvcResult otherProject = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces/{id}/projects", workspaceId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"External project\",\"key\":\"EXT\"}"), owner))
+				.andExpect(status().isCreated()).andReturn();
+		String otherProjectId = objectMapper.readTree(otherProject.getResponse().getContentAsString()).get("id").asText();
 		String foreignIssueId = createIssue(owner, otherProjectId, "Foreign issue");
 		mockMvc.perform(authenticatedCsrfRequest(put("/api/v1/issues/{id}/epic", foreignIssueId)
 				.contentType(MediaType.APPLICATION_JSON).content("{\"id\":\"" + epicId + "\"}"), owner))
@@ -719,7 +722,7 @@ class BackendApplicationTests {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"title\":\"Workflow task\",\"description\":null,\"type\":\"TASK\","
 						+ "\"status\":\"IN_PROGRESS\",\"priority\":\"MEDIUM\",\"assigneeId\":null,\"dueDate\":null}"), owner))
-				.andExpect(status().isBadRequest());
+				.andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("INVALID_STATUS_TRANSITION"));
 		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/issues/{id}", issueId)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"title\":\"Workflow task\",\"description\":null,\"type\":\"TASK\","

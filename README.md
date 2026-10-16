@@ -102,9 +102,9 @@ Run `./mvnw.cmd test` from `backend` (Docker is required for the PostgreSQL Test
 6. Phase F: collaboration and auditability (complete; issue comments, field activity history, assignment/comment notifications, membership-scoped notification access, and status transition rules).
 7. Phase G: frontend user experience (complete; responsive workspace/project/issue flows, issue details, collaboration, notifications, and feedback states; see [docs/phase-g-ux.md](docs/phase-g-ux.md)).
 8. Jira workflow foundation: issue keys, persistent ranking, and Kanban board (implemented; backend tests pass, browser interaction verification remains).
-9. Phase 2: backlog and Scrum sprint lifecycle (implemented; PostgreSQL integration rerun and browser verification remain).
-10. Phase 3: epics, issue hierarchy, and releases (implemented; PostgreSQL integration rerun and browser verification remain; see [docs/phase-3-design.md](docs/phase-3-design.md)).
-11. Phase 4: workflow customization and saved filters (implemented; backend compile and non-container unit tests pass; PostgreSQL integration and browser checks remain; see [docs/phase-4-design.md](docs/phase-4-design.md)).
+9. Phase 2: backlog and Scrum sprint lifecycle (implemented; backend PostgreSQL integration suite passes; browser verification remains).
+10. Phase 3: epics, issue hierarchy, and releases (implemented; backend PostgreSQL integration suite passes; browser verification remains; see [docs/phase-3-design.md](docs/phase-3-design.md)).
+11. Phase 4: workflow customization and saved filters (implemented; backend PostgreSQL integration suite and frontend build/lint pass; browser verification remains; see [docs/phase-4-design.md](docs/phase-4-design.md)).
 12. Phase 5: reports and dashboards.
 13. Phase 6: automation and integrations.
 14. CI and deployment hardening.
