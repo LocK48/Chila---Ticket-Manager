@@ -1,5 +1,11 @@
 import { request } from "./client";
-import type { Issue, IssueFilters, IssueInput, IssuePage, IssueStatus } from "./types";
+import type {
+  Issue,
+  IssueFilters,
+  IssueInput,
+  IssuePage,
+  IssueStatus,
+} from "./types";
 
 export async function listIssues(
   projectId: string,

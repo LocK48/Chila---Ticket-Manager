@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: chila-backend
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: CHILA_JWT_SECRET
+        sync: false
+      - key: POSTGRESQL_DB_URL
+        sync: false
+      - key: CHILA_CORS_ALLOWED_ORIGIN
+        sync: false
+      - key: CHILA_AUTH_COOKIE_SECURE
+        value: "true"
+      - key: CHILA_AUTH_COOKIE_SAME_SITE
+        value: "None"
+      - key: SPRING_MAIL_HOST
+        sync: false
+      - key: SPRING_MAIL_PORT
+        value: "587"
+      - key: SPRING_MAIL_USERNAME
+        sync: false
+      - key: SPRING_MAIL_PASSWORD
+        sync: false

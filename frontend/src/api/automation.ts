@@ -1,5 +1,9 @@
 import { request } from "./client";
-import type { AutomationExecution, AutomationRule, AutomationRuleInput } from "./types";
+import type {
+  AutomationExecution,
+  AutomationRule,
+  AutomationRuleInput,
+} from "./types";
 
 export async function listAutomationRules(
   projectId: string,

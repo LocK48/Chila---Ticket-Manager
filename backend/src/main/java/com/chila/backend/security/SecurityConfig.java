@@ -33,9 +33,13 @@ import org.springframework.util.StringUtils;
 public class SecurityConfig {
 
     private final boolean secureCookies;
+    private final String cookieSameSite;
 
-    public SecurityConfig(@Value("${chila.auth.cookie-secure}") boolean secureCookies) {
+    public SecurityConfig(
+            @Value("${chila.auth.cookie-secure}") boolean secureCookies,
+            @Value("${chila.auth.cookie-same-site:Lax}") String cookieSameSite) {
         this.secureCookies = secureCookies;
+        this.cookieSameSite = cookieSameSite;
     }
 
     @Bean
@@ -47,7 +51,7 @@ public class SecurityConfig {
     public CookieCsrfTokenRepository csrfTokenRepository() {
         CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
         repository.setCookiePath("/");
-        repository.setCookieCustomizer(cookie -> cookie.sameSite("Lax").secure(secureCookies));
+        repository.setCookieCustomizer(cookie -> cookie.sameSite(cookieSameSite).secure(secureCookies));
         return repository;
     }
 

@@ -250,3 +250,15 @@ README.md      Tổng quan và hướng dẫn tiếng Anh
 - [Phase 5: báo cáo và dashboard](phase-5-design.md)
 - [Phase 6: tự động hóa dự án](phase-6-design.md)
 - [English project guide](../README.md)
+
+## Triển khai production trên Render và Vercel
+
+Repository đã có [Dockerfile cho backend](../backend/Dockerfile), [Render Blueprint](../render.yaml) và cấu hình SPA cho Vercel tại [frontend/vercel.json](../frontend/vercel.json). Backend tự dùng biến `PORT` do Render cấp, chạy bằng user không phải root và cung cấp health check tại `/api/v1/health`. Flyway tự áp dụng migration khi ứng dụng khởi động.
+
+1. Tạo project Vercel từ repository, đặt Root Directory là `frontend`, dùng lệnh build `npm run build` và output `dist`. Deploy lần đầu rồi ghi lại origin production ổn định của Vercel.
+2. Tạo Render Blueprint từ file `render.yaml`. Khi được hỏi, cấu hình `CHILA_JWT_SECRET` bằng khóa Base64 riêng có ít nhất 32 byte sau giải mã; `POSTGRESQL_DB_URL` bằng URL kết nối Neon/PostgreSQL; `CHILA_CORS_ALLOWED_ORIGIN` bằng origin Vercel chính xác, gồm `https://` và không có dấu `/` cuối; cùng các biến SMTP để gửi OTP email.
+3. Chờ Render health check thành công và ghi lại URL dịch vụ, ví dụ `https://<service>.onrender.com`.
+4. Trong Vercel, đặt biến Production `VITE_API_BASE_URL` thành URL Render, không thêm dấu `/` cuối, rồi deploy lại. Đây là cấu hình frontend công khai, không phải secret.
+5. Kiểm tra gửi OTP đăng ký, đăng nhập, tải lại trang khi đã đăng nhập và đăng xuất. Health endpoint nằm tại `<Render URL>/api/v1/health`.
+
+Blueprint bật cookie HTTPS và `SameSite=None` cùng CORS có credentials cho hai host mặc định `vercel.app` và `onrender.com`. Các host này là cross-site nên cài đặt trình duyệt chặn third-party cookies có thể ngăn đăng nhập. Cấu hình ổn định nhất là dùng domain riêng cùng domain gốc, ví dụ `app.example.com` và `api.example.com`; đặt CORS theo đúng origin của app và dùng `CHILA_AUTH_COOKIE_SAME_SITE=Lax`. Cả hai domain phải dùng HTTPS. Preview deployment của Vercel có origin khác; cần thêm origin tương ứng vào backend trước khi thử các API yêu cầu đăng nhập.

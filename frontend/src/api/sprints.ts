@@ -1,5 +1,12 @@
 import { request } from "./client";
-import type { Issue, IssueFilters, IssuePage, IssueStatus, Sprint, SprintInput } from "./types";
+import type {
+  Issue,
+  IssueFilters,
+  IssuePage,
+  IssueStatus,
+  Sprint,
+  SprintInput,
+} from "./types";
 
 export async function listBacklog(
   projectId: string,

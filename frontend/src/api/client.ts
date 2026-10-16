@@ -36,7 +36,10 @@ export async function bootstrapCsrf(): Promise<void> {
     throw new ApiError("Could not prepare a secure request.", response.status);
 }
 
-export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function request<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
   const method = (init.method ?? "GET").toUpperCase();
   const headers = new Headers(init.headers);
   if (init.body && !headers.has("Content-Type"))

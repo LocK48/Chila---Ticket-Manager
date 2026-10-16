@@ -151,8 +151,7 @@ export function AppLayout() {
             }
             onClick={() => setMobileOpen(false)}
           >
-            <span className="brand-glyph">c</span>
-            <span>chila</span>
+            <span className="app-brand-word">chila</span>
           </Link>
           <div className="sidebar-workspace">
             <label htmlFor="workspace-switcher">Workspace</label>

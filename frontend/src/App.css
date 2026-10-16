@@ -1336,15 +1336,8 @@ select:focus {
   text-decoration: none;
   letter-spacing: -0.4px;
 }
-.brand-glyph {
-  display: grid;
-  width: 27px;
-  height: 27px;
-  place-items: center;
-  border-radius: 8px;
-  color: #fff;
-  background: #5867c9;
-  font-size: 16px;
+.app-brand-word {
+  color: #4558cb;
 }
 .sidebar-workspace {
   padding: 0 7px 17px;
@@ -1709,6 +1702,11 @@ select:focus {
   font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.overview-issue-row > .status-pill {
+  box-sizing: border-box;
+  width: 100%;
+  justify-content: center;
 }
 .overview-section .text-action {
   flex: 0 0 auto;

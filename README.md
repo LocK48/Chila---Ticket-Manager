@@ -133,6 +133,22 @@ Set `POSTGRESQL_DB_URL` in `backend/.env` to a PostgreSQL or JDBC PostgreSQL URL
 
 Start the backend with `SERVER_PORT=8081` (PowerShell: `$env:SERVER_PORT="8081"`) and set `CHILA_API_TARGET=http://localhost:8081` before starting Vite. For a separately hosted API, configure `VITE_API_BASE_URL` in the frontend environment and set `CHILA_CORS_ALLOWED_ORIGIN` on the backend to the exact frontend origin.
 
+## Production deployment (Render + Vercel)
+
+The repository includes a backend Docker image definition at [backend/Dockerfile](backend/Dockerfile), a Render Blueprint at [render.yaml](render.yaml), and Vercel SPA routing at [frontend/vercel.json](frontend/vercel.json). The Render service binds to the platform-provided `PORT`, runs as a non-root user, and uses `/api/v1/health` for health checks. Flyway applies database migrations on startup.
+
+1. Create a Vercel project for this repository and set its Root Directory to `frontend`. Keep the detected Vite framework, build command `npm run build`, and output directory `dist`. Deploy once and note the stable production Vercel origin.
+2. Push this repository to a Git provider and create a Render Blueprint from it using `render.yaml`. Set the required secret values when prompted:
+   - `CHILA_JWT_SECRET`: private Base64-encoded key with at least 32 decoded bytes. In PowerShell, generate one with `[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))`.
+   - `POSTGRESQL_DB_URL`: the Neon/PostgreSQL connection URL. Use the provider's pooled URL if recommended, and keep it private.
+   - `CHILA_CORS_ALLOWED_ORIGIN`: the exact production Vercel origin, including `https://` and no trailing slash, for example `https://chila.example.com`.
+   - SMTP values (`SPRING_MAIL_HOST`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`) for email OTP. Render sets `CHILA_AUTH_COOKIE_SECURE=true` and `CHILA_AUTH_COOKIE_SAME_SITE=None` through the Blueprint.
+3. Wait for the Render health check to pass, then note the service URL (`https://<service>.onrender.com`).
+4. Add `VITE_API_BASE_URL` in Vercel's Production environment with the Render service URL (no trailing slash), then redeploy. This variable is public frontend configuration, not a secret.
+5. Open the deployed frontend and verify signup OTP delivery, login, a page refresh while signed in, and logout. Also check the Render health endpoint at `/api/v1/health`.
+
+The default `vercel.app` and `onrender.com` domains are cross-site. The Blueprint uses secure `SameSite=None` cookies and credentialed CORS for this setup, but browsers or privacy settings that block third-party cookies can still prevent cookie-based login. For the most reliable production setup, attach frontend and API custom domains under the same registrable domain (for example `app.example.com` and `api.example.com`), update `CHILA_CORS_ALLOWED_ORIGIN` to the app origin, and use `CHILA_AUTH_COOKIE_SAME_SITE=Lax`. Keep the frontend and API on HTTPS. Vercel preview deployments use different origins; add a matching backend CORS origin before testing authenticated API calls from a preview.
+
 ## Configuration
 
 The checked-in template is [backend/.env.example](backend/.env.example). The real `backend/.env` is local-only and ignored by Git.
@@ -142,6 +158,7 @@ The checked-in template is [backend/.env.example](backend/.env.example). The rea
 | `CHILA_JWT_SECRET` | Private Base64 signing key; use at least 32 bytes of key material. Required. |
 | `CHILA_JWT_ISSUER` | JWT issuer; defaults to `chila-local`. |
 | `CHILA_AUTH_COOKIE_SECURE` | Enable `Secure` cookies in HTTPS deployments; local HTTP defaults to `false`. |
+| `CHILA_AUTH_COOKIE_SAME_SITE` | Cookie SameSite setting; defaults to `Lax`. Use `None` with `Secure` cookies when the frontend and API are cross-site. |
 | `CHILA_CORS_ALLOWED_ORIGIN` | Exact browser origin allowed by the backend; defaults to `http://localhost:5173`. |
 | `POSTGRESQL_DB_URL` | Optional Neon/PostgreSQL connection URL. |
 | `SPRING_DATASOURCE_URL` | Explicit JDBC URL; overrides `POSTGRESQL_DB_URL`. |
@@ -153,7 +170,7 @@ The checked-in template is [backend/.env.example](backend/.env.example). The rea
 | `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD` | SMTP authentication credentials. |
 | `SPRING_MAIL_SMTP_AUTH`, `SPRING_MAIL_STARTTLS` | SMTP auth and STARTTLS switches; both default to `true`. |
 | `CHILA_EMAIL_FROM` | Sender address. When empty, Chila uses `SPRING_MAIL_USERNAME`. |
-| `SERVER_PORT` | Backend HTTP port; defaults to `8080`. |
+| `SERVER_PORT` | Backend HTTP port; defaults to `8080`. `PORT` takes precedence on hosting platforms. |
 | `CHILA_API_TARGET` | Vite development proxy target; defaults to `http://localhost:8080`. |
 | `VITE_API_BASE_URL` | Optional frontend API base URL for a separately hosted backend. |
 

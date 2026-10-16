@@ -1,5 +1,16 @@
 import { request } from "./client";
-import type { Epic, EpicInput, Issue, IssueLink, IssueLinkType, IssuePage, IssueRelationships, IssueStatus, ProjectRelease, ReleaseInput } from "./types";
+import type {
+  Epic,
+  EpicInput,
+  Issue,
+  IssueLink,
+  IssueLinkType,
+  IssuePage,
+  IssueRelationships,
+  IssueStatus,
+  ProjectRelease,
+  ReleaseInput,
+} from "./types";
 
 export async function listProjectEpics(projectId: string): Promise<Epic[]> {
   return request<Epic[]>(
