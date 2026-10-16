@@ -18,3 +18,7 @@
 .vscode/
 .DS_Store
 Thumbs.db
+
+# AI Instructions
+AI.md
+AI_frontend.md
