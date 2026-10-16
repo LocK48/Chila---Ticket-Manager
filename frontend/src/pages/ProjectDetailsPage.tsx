@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 import {
   ApiError,
+  getProjectDashboard,
   getWorkflow,
   listProjects,
   listWorkspaceMembers,
@@ -17,6 +18,7 @@ import {
   type WorkspaceMember,
   type IssueStatus,
   type WorkflowTransition,
+  type ProjectDashboard,
 } from "../auth/api";
 import { IssuesPanel } from "../features/issues/IssuesPanel";
 import { EpicsPage, ReleasesPage } from "../features/hierarchy/HierarchyPages";
@@ -122,6 +124,9 @@ export function ProjectDetailsPage() {
         >
           Overview
         </NavLink>
+        <NavLink to={`/workspaces/${workspaceId}/projects/${project.id}/reports`}>
+          Reports
+        </NavLink>
         {canManage && (
           <NavLink
             to={`/workspaces/${workspaceId}/projects/${project.id}/settings`}
@@ -150,29 +155,37 @@ export function ProjectIssuesTab() {
 
 export function ProjectOverviewTab() {
   const { project } = useProjectContext();
+  const [dashboard, setDashboard] = useState<ProjectDashboard | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const load = useCallback(async () => {
+    setLoading(true); setError("");
+    try { setDashboard(await getProjectDashboard(project.id)); }
+    catch (cause) { setError(cause instanceof ApiError ? cause.message : "Could not load project reports."); }
+    finally { setLoading(false); }
+  }, [project.id]);
+  useEffect(() => { void Promise.resolve().then(load); }, [load]);
+  const statusLabels: Record<IssueStatus, string> = { TODO: "To do", IN_PROGRESS: "In progress", IN_REVIEW: "In review", DONE: "Done" };
   return (
-    <section className="detail-card">
-      <h2>Project overview</h2>
-      <dl className="detail-grid">
-        <div>
-          <dt>Key</dt>
-          <dd>{project.key}</dd>
+    <div className="report-page">
+      <div className="report-heading"><div><p className="eyebrow">PROJECT REPORTS</p><h2>Project dashboard</h2><p className="subtle">A live summary of issue flow and completed sprint history.</p></div><button className="secondary-button compact" onClick={() => void load()} disabled={loading}>Refresh</button></div>
+      {loading ? <p className="subtle">Loading report…</p> : error ? <div className="report-error" role="alert">{error}<button className="text-action" onClick={() => void load()}>Try again</button></div> : dashboard && <>
+        <div className="report-stat-grid">
+          <ReportStat label="Open issues" value={dashboard.totalIssues - dashboard.issuesByStatus.DONE} note={`${dashboard.totalIssues} issues total`} />
+          <ReportStat label="Overdue" value={dashboard.overdueIssues} note="Unarchived issues past due date" />
+          <ReportStat label="Completed recently" value={dashboard.completedLast30Days} note="In the last 30 days" />
+          <ReportStat label="Average lead time" value={dashboard.averageLeadTimeDays == null ? "—" : `${dashboard.averageLeadTimeDays.toFixed(1)} days`} note="Issue creation to first completion" />
+          <ReportStat label="Average cycle time" value={dashboard.averageCycleTimeDays == null ? "—" : `${dashboard.averageCycleTimeDays.toFixed(1)} days`} note="First in progress to first completion" />
         </div>
-        <div>
-          <dt>Status</dt>
-          <dd>{project.status.toLowerCase()}</dd>
-        </div>
-        <div>
-          <dt>Created</dt>
-          <dd>{new Date(project.createdAt).toLocaleDateString()}</dd>
-        </div>
-        <div>
-          <dt>Last updated</dt>
-          <dd>{new Date(project.updatedAt).toLocaleDateString()}</dd>
-        </div>
-      </dl>
-    </section>
+        <section className="report-card"><div className="report-section-title"><div><h3>Issues by status</h3><p className="subtle">Current unarchived issue counts</p></div></div><div className="status-report-grid">{(Object.keys(statusLabels) as IssueStatus[]).map((status) => { const count = dashboard.issuesByStatus[status] ?? 0; const max = Math.max(1, ...Object.values(dashboard.issuesByStatus)); return <div className="status-report-row" key={status}><span>{statusLabels[status]}</span><div className="report-track"><i style={{ width: `${count / max * 100}%` }} /></div><strong>{count}</strong></div>; })}</div></section>
+        <section className="report-card"><div className="report-section-title"><div><h3>Sprint velocity</h3><p className="subtle">Completed issues from sprint completion snapshots; issue counts are not story points.</p></div></div>{dashboard.sprintVelocity.length ? <div className="report-table-wrap"><table className="report-table"><thead><tr><th>Sprint</th><th>Committed</th><th>Completed</th><th>Unfinished</th><th>Completion</th></tr></thead><tbody>{dashboard.sprintVelocity.map((sprint) => <tr key={sprint.sprintId}><th scope="row">{sprint.sprintName}</th>{sprint.historyAvailable ? <><td>{sprint.committedIssues}</td><td>{sprint.completedIssues}</td><td>{sprint.unfinishedIssues}</td><td>{sprint.completionPercentage?.toFixed(0)}%</td></> : <td colSpan={4} className="subtle">Historical scope unavailable</td>}</tr>)}</tbody></table></div> : <p className="report-empty">Complete a sprint to see velocity here.</p>}</section>
+      </>}
+    </div>
   );
+}
+
+function ReportStat({ label, value, note }: { label: string; value: string | number; note: string }) {
+  return <article className="report-stat"><span>{label}</span><strong>{value}</strong><small>{note}</small></article>;
 }
 
 export function ProjectBoardTab() {

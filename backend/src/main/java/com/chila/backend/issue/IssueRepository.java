@@ -139,6 +139,10 @@ public interface IssueRepository extends JpaRepository<IssueEntity, UUID> {
 
     List<IssueEntity> findByIdInAndProject_Id(List<UUID> ids, UUID projectId);
 
+    long countByProject_IdAndStatusAndArchivedAtIsNull(UUID projectId, IssueStatus status);
+
+    long countByProject_IdAndArchivedAtIsNullAndDueDateBefore(UUID projectId, java.time.LocalDate date);
+
     List<IssueEntity> findByParentIssue_IdAndArchivedAtIsNullOrderByCreatedAtAsc(UUID parentIssueId, Pageable pageable);
 
     @Query("select count(i) from IssueEntity i where i.epic.id = :epicId and i.archivedAt is null")

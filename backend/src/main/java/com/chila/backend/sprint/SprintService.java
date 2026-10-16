@@ -27,6 +27,8 @@ import com.chila.backend.workspace.MembershipRepository;
 import com.chila.backend.workspace.MembershipRole;
 import com.chila.backend.workspace.WorkspaceAccessDeniedException;
 import com.chila.backend.workspace.WorkspaceNotFoundException;
+import com.chila.backend.report.SprintReportEventKind;
+import com.chila.backend.report.SprintReportEventService;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -40,13 +42,15 @@ public class SprintService {
     private final ProjectRepository projectRepository;
     private final MembershipRepository membershipRepository;
     private final IssueRepository issueRepository;
+    private final SprintReportEventService sprintReportEvents;
 
     public SprintService(SprintRepository sprintRepository, ProjectRepository projectRepository,
-            MembershipRepository membershipRepository, IssueRepository issueRepository) {
+            MembershipRepository membershipRepository, IssueRepository issueRepository, SprintReportEventService sprintReportEvents) {
         this.sprintRepository = sprintRepository;
         this.projectRepository = projectRepository;
         this.membershipRepository = membershipRepository;
         this.issueRepository = issueRepository;
+        this.sprintReportEvents = sprintReportEvents;
     }
 
     @Transactional(readOnly = true)
@@ -101,6 +105,8 @@ public class SprintService {
         }
         sprint.update(sprint.getName(), sprint.getGoal(), start, end);
         sprint.start();
+        for (IssueEntity issue : issueRepository.findByProject_IdAndSprint_IdAndArchivedAtIsNull(projectId, sprintId))
+            sprintReportEvents.record(sprint, issue, SprintReportEventKind.SPRINT_START, true);
         return response(sprint);
     }
 
@@ -126,9 +132,12 @@ public class SprintService {
             throw new InvalidInputException("targetSprintId", "Do not choose a target sprint when returning issues to the backlog.");
         }
 
+        List<IssueEntity> sprintIssues = issueRepository.findByProject_IdAndSprint_IdAndArchivedAtIsNull(projectId, sprintId);
+        for (IssueEntity issue : sprintIssues)
+            sprintReportEvents.record(sprint, issue, SprintReportEventKind.SPRINT_COMPLETED, true);
         long targetRank = target == null ? issueRepository.findMaxBacklogRank(projectId)
                 : issueRepository.findMaxBacklogRankInSprint(projectId, target.getId());
-        for (IssueEntity issue : issueRepository.findByProject_IdAndSprint_IdAndArchivedAtIsNull(projectId, sprintId)) {
+        for (IssueEntity issue : sprintIssues) {
             if (issue.getStatus() == com.chila.backend.issue.IssueStatus.DONE) continue;
             if (request.unfinishedIssueAction() == CompleteSprintRequest.UnfinishedIssueAction.BACKLOG) {
                 issue.assignToSprint(null);
@@ -164,9 +173,12 @@ public class SprintService {
                 }
                 throw new InvalidInputException("issueIds", "Return issues to the backlog before planning another sprint.");
             }
+            boolean alreadyInSprint = issue.getSprint() != null && issue.getSprint().getId().equals(sprintId);
             issue.assignToSprint(sprint);
             issue.setBacklogRank(Math.addExact(rank, RANK_STEP));
             rank = issue.getBacklogRank();
+            if (!alreadyInSprint && sprint.getState() == SprintState.ACTIVE)
+                sprintReportEvents.record(sprint, issue, SprintReportEventKind.ISSUE_ADDED, true);
         }
     }
 
@@ -184,6 +196,8 @@ public class SprintService {
         }
         long rank = issueRepository.findMaxBacklogRank(projectId);
         for (IssueEntity issue : issues) {
+            if (sprint.getState() == SprintState.ACTIVE)
+                sprintReportEvents.record(sprint, issue, SprintReportEventKind.ISSUE_REMOVED, false);
             issue.assignToSprint(null);
             issue.setBacklogRank(Math.addExact(rank, RANK_STEP));
             rank = issue.getBacklogRank();

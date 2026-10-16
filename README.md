@@ -105,7 +105,7 @@ Run `./mvnw.cmd test` from `backend` (Docker is required for the PostgreSQL Test
 9. Phase 2: backlog and Scrum sprint lifecycle (implemented; backend PostgreSQL integration suite passes; browser verification remains).
 10. Phase 3: epics, issue hierarchy, and releases (implemented; backend PostgreSQL integration suite passes; browser verification remains; see [docs/phase-3-design.md](docs/phase-3-design.md)).
 11. Phase 4: workflow customization and saved filters (implemented; backend PostgreSQL integration suite and frontend build/lint pass; browser verification remains; see [docs/phase-4-design.md](docs/phase-4-design.md)).
-12. Phase 5: reports and dashboards.
+12. Phase 5: reports and dashboards (implemented; PostgreSQL integration suite and frontend production build pass; browser verification remains; see [docs/phase-5-design.md](docs/phase-5-design.md)).
 13. Phase 6: automation and integrations.
 14. CI and deployment hardening.
 

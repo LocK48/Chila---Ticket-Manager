@@ -32,6 +32,7 @@ import { WorkspaceIssuesPage } from "./pages/WorkspaceIssuesPage";
 import { WorkspaceRedirect } from "./pages/WorkspaceRedirect";
 import { WorkspaceRoute } from "./pages/WorkspaceRoute";
 import { WorkspaceSettingsPage } from "./pages/WorkspaceSettingsPage";
+import { ProjectReportsPage } from "./features/reports/ProjectReportsPage";
 import "./App.css";
 
 function RequireAuth() {
@@ -109,6 +110,7 @@ function AppRoutes() {
               <Route path="epics" element={<ProjectEpicsRoute />} />
               <Route path="releases" element={<ProjectReleasesRoute />} />
               <Route path="overview" element={<ProjectOverviewTab />} />
+              <Route path="reports" element={<ProjectReportsPage />} />
               <Route path="settings" element={<ProjectSettingsTab />} />
             </Route>
             <Route path="issues" element={<WorkspaceIssuesPage />} />

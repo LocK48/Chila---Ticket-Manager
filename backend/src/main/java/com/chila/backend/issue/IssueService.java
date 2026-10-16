@@ -31,6 +31,8 @@ import com.chila.backend.workspace.MembershipRepository;
 import com.chila.backend.workspace.MembershipRole;
 import com.chila.backend.workspace.WorkspaceAccessDeniedException;
 import com.chila.backend.workflow.WorkflowService;
+import com.chila.backend.report.SprintReportEventKind;
+import com.chila.backend.report.SprintReportEventService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -51,6 +53,7 @@ public class IssueService {
     private final NotificationService notificationService;
     private final SprintRepository sprintRepository;
     private final WorkflowService workflowService;
+    private final SprintReportEventService sprintReportEvents;
 
     public IssueService(
             IssueRepository issueRepository,
@@ -60,7 +63,8 @@ public class IssueService {
             IssueActivityService activityService,
             NotificationService notificationService,
             SprintRepository sprintRepository,
-            WorkflowService workflowService) {
+            WorkflowService workflowService,
+            SprintReportEventService sprintReportEvents) {
         this.issueRepository = issueRepository;
         this.projectRepository = projectRepository;
         this.membershipRepository = membershipRepository;
@@ -69,6 +73,7 @@ public class IssueService {
         this.notificationService = notificationService;
         this.sprintRepository = sprintRepository;
         this.workflowService = workflowService;
+        this.sprintReportEvents = sprintReportEvents;
     }
 
     @Transactional
@@ -128,6 +133,7 @@ public class IssueService {
         if (issue.getSprint() != null && issue.getSprint().getState() == SprintState.CLOSED) {
             throw new SprintConflictException("Issues in closed sprints cannot be reassigned.");
         }
+        SprintEntity previousSprint = issue.getSprint();
         SprintEntity target = null;
         if (request.sprintId() != null) {
             target = sprintRepository.findByIdAndProject_Id(request.sprintId(), project.getId())
@@ -171,6 +177,14 @@ public class IssueService {
             }
             issue.assignToSprint(target);
             issue.setBacklogRank(Math.addExact(issueRepository.findMaxBacklogRankInSprint(project.getId(), target.getId()), RANK_STEP));
+        }
+        if (previousSprint != null && previousSprint.getState() == SprintState.ACTIVE
+                && (target == null || !target.getId().equals(previousSprint.getId()))) {
+            sprintReportEvents.record(previousSprint, issue, SprintReportEventKind.ISSUE_REMOVED, false);
+        }
+        if (target != null && target.getState() == SprintState.ACTIVE
+                && (previousSprint == null || !target.getId().equals(previousSprint.getId()))) {
+            sprintReportEvents.record(target, issue, SprintReportEventKind.ISSUE_ADDED, true);
         }
         return response(issue);
     }
@@ -263,7 +277,8 @@ public class IssueService {
                 && issue.getStatus() != request.status()) {
             throw new SprintConflictException("Workflow status cannot change for an issue in a closed sprint.");
         }
-        requireTransition(issue.getProject().getId(), issue.getStatus(), request.status());
+        IssueStatus previousStatus = issue.getStatus();
+        requireTransition(issue.getProject().getId(), previousStatus, request.status());
         UserEntity actor = userRepository.findById(actorId).orElseThrow(UserNotFoundException::new);
         recordChange(issue, actor, "title", issue.getTitle(), request.title().trim());
         recordChange(issue, actor, "description", issue.getDescription(), normalizeDescription(request.description()));
@@ -279,6 +294,7 @@ public class IssueService {
         issue.update(request.title().trim(), normalizeDescription(request.description()), request.type(),
                 request.status(), request.priority(), assignee, request.dueDate());
         issue.setRankValue(rank);
+        if (previousStatus != issue.getStatus()) sprintReportEvents.statusChanged(issue);
         if (assignee != null && !assignee.getId().equals(previousAssigneeId)) {
             notificationService.onAssignment(issue, assignee, actorId);
         }
@@ -318,6 +334,7 @@ public class IssueService {
         IssueStatus oldStatus = issue.getStatus();
         long newRank = rankAt(target, insertionIndex);
         issue.moveTo(request.status(), newRank);
+        if (oldStatus != request.status()) sprintReportEvents.statusChanged(issue);
 
         UserEntity actor = userRepository.findById(actorId).orElseThrow(UserNotFoundException::new);
         if (oldStatus != request.status()) {
@@ -334,6 +351,8 @@ public class IssueService {
         IssueEntity issue = requireIssue(issueId);
         requireManager(issue.getProject(), actorId);
         issue.archive();
+        if (issue.getSprint() != null && issue.getSprint().getState() == SprintState.ACTIVE)
+            sprintReportEvents.record(issue.getSprint(), issue, SprintReportEventKind.ISSUE_REMOVED, false);
         UserEntity actor = userRepository.findById(actorId).orElseThrow(UserNotFoundException::new);
         activityService.record(issue, actor, "ARCHIVED", null, null, null);
     }
@@ -344,6 +363,8 @@ public class IssueService {
         requireManager(issue.getProject(), actorId);
         requireActiveProject(issue.getProject());
         issue.restore();
+        if (issue.getSprint() != null && issue.getSprint().getState() == SprintState.ACTIVE)
+            sprintReportEvents.record(issue.getSprint(), issue, SprintReportEventKind.ISSUE_ADDED, true);
         UserEntity actor = userRepository.findById(actorId).orElseThrow(UserNotFoundException::new);
         activityService.record(issue, actor, "RESTORED", null, null, null);
         return response(issue);

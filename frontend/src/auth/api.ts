@@ -40,6 +40,39 @@ export type Project = {
 
 export type IssueType = "TASK" | "BUG" | "STORY";
 export type IssueStatus = "TODO" | "IN_PROGRESS" | "IN_REVIEW" | "DONE";
+export type ProjectDashboard = {
+  totalIssues: number;
+  overdueIssues: number;
+  issuesByStatus: Record<IssueStatus, number>;
+  completedLast30Days: number;
+  averageLeadTimeDays: number | null;
+  averageCycleTimeDays: number | null;
+  sprintVelocity: SprintVelocityPoint[];
+};
+export type SprintVelocityPoint = {
+  sprintId: string;
+  sprintName: string;
+  startDate: string | null;
+  committedIssues: number | null;
+  completedIssues: number | null;
+  unfinishedIssues: number | null;
+  completionPercentage: number | null;
+  historyAvailable: boolean;
+};
+export type SprintReport = {
+  sprintId: string;
+  sprintName: string;
+  state: "FUTURE" | "ACTIVE" | "CLOSED";
+  startDate: string | null;
+  endDate: string | null;
+  historyAvailable: boolean;
+  committedIssues: number | null;
+  completedIssues: number | null;
+  unfinishedIssues: number | null;
+  completionPercentage: number | null;
+  burndown: { date: string; scopeIssues: number; remainingIssues: number }[];
+  completionIssues: { issueId: string; issueKey: string; issueTitle: string; issueStatus: IssueStatus }[];
+};
 export type IssuePriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 export type Issue = {
   id: string;
@@ -484,6 +517,12 @@ export async function listProjectSprints(projectId: string): Promise<Sprint[]> {
   return request<Sprint[]>(
     `/api/v1/projects/${encodeURIComponent(projectId)}/sprints`,
   );
+}
+export async function getProjectDashboard(projectId: string): Promise<ProjectDashboard> {
+  return request<ProjectDashboard>(`/api/v1/projects/${encodeURIComponent(projectId)}/reports`);
+}
+export async function getSprintReport(projectId: string, sprintId: string): Promise<SprintReport> {
+  return request<SprintReport>(`/api/v1/projects/${encodeURIComponent(projectId)}/reports/sprints/${encodeURIComponent(sprintId)}`);
 }
 export async function createSprint(
   projectId: string,

@@ -616,6 +616,15 @@ class BackendApplicationTests {
 		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{projectId}/sprints/{sprintId}/complete", projectId, sprintId)
 				.contentType(MediaType.APPLICATION_JSON).content("{\"unfinishedIssueAction\":\"BACKLOG\"}"), owner))
 				.andExpect(status().isOk()).andExpect(jsonPath("$.state").value("CLOSED"));
+		mockMvc.perform(get("/api/v1/projects/{projectId}/reports/sprints/{sprintId}", projectId, sprintId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.historyAvailable").value(true))
+				.andExpect(jsonPath("$.committedIssues").value(2)).andExpect(jsonPath("$.completedIssues").value(1))
+				.andExpect(jsonPath("$.unfinishedIssues").value(1)).andExpect(jsonPath("$.burndown").isArray())
+				.andExpect(jsonPath("$.completionIssues.length()").value(2));
+		mockMvc.perform(get("/api/v1/projects/{projectId}/reports", projectId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.totalIssues").value(3))
+				.andExpect(jsonPath("$.issuesByStatus.DONE").value(1))
+				.andExpect(jsonPath("$.sprintVelocity[0].historyAvailable").value(true));
 		mockMvc.perform(get("/api/v1/projects/{id}/backlog", projectId).cookie(owner))
 				.andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(2));
 		mockMvc.perform(get("/api/v1/projects/{id}/sprints", projectId).cookie(owner))
