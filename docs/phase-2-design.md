@@ -30,3 +30,5 @@ Backlog and sprint issue lists are paginated (maximum page size 100); the curren
 ## Verification
 
 Backend integration tests cover sprint creation, planning, active board pagination, one-active-sprint enforcement, member permission denial, completion to backlog, and closed history. They use PostgreSQL Testcontainers and require Docker Desktop. Run `./mvnw.cmd test` from `backend`; run `npm run build` and `npm run lint` from `frontend`.
+
+In the latest phase review, backend compilation and the five Docker-independent unit tests passed. The Docker-backed integration suite and manual browser review remain pending because Docker Desktop's engine endpoint is unavailable in the current environment.
