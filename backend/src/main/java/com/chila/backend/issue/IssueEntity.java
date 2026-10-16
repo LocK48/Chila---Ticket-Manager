@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 import com.chila.backend.project.ProjectEntity;
+import com.chila.backend.sprint.SprintEntity;
 import com.chila.backend.user.UserEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -51,6 +52,13 @@ public class IssueEntity {
     @Column(name = "rank_value", nullable = false)
     private long rankValue;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sprint_id")
+    private SprintEntity sprint;
+
+    @Column(name = "backlog_rank", nullable = false)
+    private long backlogRank;
+
     @Column(nullable = false, length = 200)
     private String title;
 
@@ -88,7 +96,7 @@ public class IssueEntity {
 
     public IssueEntity(ProjectEntity project, UserEntity reporter, String title, String description,
             IssueType type, IssueStatus status, IssuePriority priority, UserEntity assignee, LocalDate dueDate,
-            long issueNumber, long rankValue) {
+            long issueNumber, long rankValue, long backlogRank) {
         this.project = project;
         this.reporter = reporter;
         this.title = title;
@@ -100,6 +108,7 @@ public class IssueEntity {
         this.dueDate = dueDate;
         this.issueNumber = issueNumber;
         this.rankValue = rankValue;
+        this.backlogRank = backlogRank;
     }
 
     public UUID getId() { return id; }
@@ -108,6 +117,8 @@ public class IssueEntity {
     public UserEntity getAssignee() { return assignee; }
     public long getIssueNumber() { return issueNumber; }
     public long getRankValue() { return rankValue; }
+    public SprintEntity getSprint() { return sprint; }
+    public long getBacklogRank() { return backlogRank; }
     public String getTitle() { return title; }
     public String getDescription() { return description; }
     public IssueType getType() { return type; }
@@ -145,4 +156,7 @@ public class IssueEntity {
         this.status = status;
         this.rankValue = rankValue;
     }
+
+    public void assignToSprint(SprintEntity sprint) { this.sprint = sprint; }
+    public void setBacklogRank(long backlogRank) { this.backlogRank = backlogRank; }
 }

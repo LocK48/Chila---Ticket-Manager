@@ -2,7 +2,7 @@
 
 Chila is a team project and issue management platform. This repository is being built incrementally as a Java full-stack portfolio project.
 
-## Current milestone: Jira workflow foundation
+## Current milestone: Kanban and Scrum workflow foundation
 
 - Java 21 and Spring Boot 3.5 backend.
 - React, TypeScript, and Vite frontend.
@@ -18,8 +18,9 @@ Chila is a team project and issue management platform. This repository is being 
 - The signed-in home page can create and switch workspaces, edit workspace details, add existing users, change member roles, remove members or leave, and delete a workspace as its owner.
 - Projects can be created and listed inside workspaces; owners and admins can update details and archive or restore them.
 - Issues have sequential project-scoped keys, persisted column ranking, and a workspace-protected key lookup API. Project boards support status columns, issue creation, quick filters, drag-and-drop, and keyboard-based ordering.
+- Product backlogs keep their own order and issues can be planned into project sprints. Future, active, and closed sprints have guarded lifecycle transitions; the active sprint board reuses Kanban and completion routes unfinished issues explicitly. See [docs/phase-2-design.md](docs/phase-2-design.md).
 
-Workspace and membership API/schema decisions are documented in [docs/phase-c-design.md](docs/phase-c-design.md). Phase D project decisions are in [docs/phase-d-design.md](docs/phase-d-design.md). Issue workflows, CI, and deployment are still planned.
+Workspace and membership API/schema decisions are documented in [docs/phase-c-design.md](docs/phase-c-design.md). Phase D project decisions are in [docs/phase-d-design.md](docs/phase-d-design.md). Kanban and Scrum data/API decisions are in [docs/issue-keys-ranking-kanban.md](docs/issue-keys-ranking-kanban.md) and [docs/phase-2-design.md](docs/phase-2-design.md). Later hierarchy, reporting, CI, and deployment work remains planned.
 
 ## Prerequisites
 
@@ -100,7 +101,7 @@ Run `./mvnw.cmd test` from `backend` (Docker is required for the PostgreSQL Test
 6. Phase F: collaboration and auditability (complete; issue comments, field activity history, assignment/comment notifications, membership-scoped notification access, and status transition rules).
 7. Phase G: frontend user experience (complete; responsive workspace/project/issue flows, issue details, collaboration, notifications, and feedback states; see [docs/phase-g-ux.md](docs/phase-g-ux.md)).
 8. Jira workflow foundation: issue keys, persistent ranking, and Kanban board (implemented; backend tests pass, browser interaction verification remains).
-9. Backlog and sprint model/lifecycle, then active sprint board.
+9. Phase 2: backlog and Scrum sprint lifecycle (implemented; PostgreSQL integration rerun and browser verification remain).
 10. Epics, subtasks, issue links, releases, workflow customization, saved filters, reports, automation, CI, and deployment.
 
 Each milestone will be verified before moving on.

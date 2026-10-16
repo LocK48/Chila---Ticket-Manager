@@ -11,6 +11,7 @@ import com.chila.backend.issue.IssueType;
 public record IssueResponse(
         UUID id,
         UUID projectId,
+        UUID sprintId,
         String projectKey,
         String issueKey,
         long issueNumber,

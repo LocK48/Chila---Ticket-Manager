@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type DragEvent, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
-  ApiError, createIssue, listIssues, moveIssue,
+  ApiError, assignIssueToSprint, createIssue, listIssues, listSprintIssues, moveIssue,
   type Issue, type IssueInput, type IssuePage, type IssuePriority, type IssueStatus, type IssueType, type WorkspaceMember,
 } from '../../auth/api'
 import { ErrorState, LoadingState } from '../../components/ui/StateMessage'
@@ -20,8 +20,8 @@ const emptyInfo = (): ColumnInfo => ({
   IN_REVIEW: { page: 0, totalItems: 0, totalPages: 0 }, DONE: { page: 0, totalItems: 0, totalPages: 0 },
 })
 
-export function KanbanBoard({ projectId, members, projectActive }: {
-  projectId: string; members: WorkspaceMember[]; projectActive: boolean
+export function KanbanBoard({ projectId, members, projectActive, sprintId }: {
+  projectId: string; members: WorkspaceMember[]; projectActive: boolean; sprintId?: string
 }) {
   const { workspaceId = '' } = useParams()
   const [columns, setColumns] = useState<BoardColumns>(emptyColumns)
@@ -38,14 +38,23 @@ export function KanbanBoard({ projectId, members, projectActive }: {
   const [draggingId, setDraggingId] = useState('')
   const [dragOverStatus, setDragOverStatus] = useState<IssueStatus | null>(null)
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [groupByAssignee, setGroupByAssignee] = useState(false)
 
-  const fetchColumn = useCallback((status: IssueStatus, page: number) => listIssues(projectId, {
+  const fetchColumn = useCallback((status: IssueStatus, page: number) => sprintId
+    ? listSprintIssues(projectId, sprintId, status, page, 50, {
+      search: search.trim() || undefined,
+      assigneeId: assigneeId && assigneeId !== 'unassigned' ? assigneeId : undefined,
+      unassigned: assigneeId === 'unassigned' || undefined,
+      priority: priority ? priority as IssuePriority : undefined,
+      type: type ? type as IssueType : undefined,
+    })
+    : listIssues(projectId, {
     status, page, size: 50, sort: 'rank', direction: 'asc', search: search.trim() || undefined,
     assigneeId: assigneeId && assigneeId !== 'unassigned' ? assigneeId : undefined,
     unassigned: assigneeId === 'unassigned' || undefined,
     priority: priority ? priority as IssuePriority : undefined,
     type: type ? type as IssueType : undefined,
-  }), [projectId, search, assigneeId, priority, type])
+  }), [projectId, sprintId, search, assigneeId, priority, type])
 
   const load = useCallback(async () => {
     setLoading(true); setError('')
@@ -119,9 +128,19 @@ export function KanbanBoard({ projectId, members, projectActive }: {
     }
     try {
       const created = await createIssue(projectId, input)
+      if (sprintId) await assignIssueToSprint(created.id, sprintId)
       setShowCreateForm(false); setNotice(`${created.issueKey} created.`); await load()
     } catch (cause) { setError(cause instanceof ApiError ? cause.message : 'Could not create this issue.') }
     finally { setBusy(false) }
+  }
+
+  function renderCard(issue: Issue, status: IssueStatus) {
+    return <BoardIssueCard key={issue.id} issue={issue} index={columns[status].indexOf(issue)}
+      columnLength={columns[status].length} workspaceId={workspaceId} projectActive={projectActive}
+      busy={busy} dragging={draggingId === issue.id} onDragStart={(id) => setDraggingId(id)}
+      onDragEnd={() => { setDraggingId(''); setDragOverStatus(null) }} onDrop={(event, target) => onCardDrop(event, target, status)}
+      onMove={(toStatus, beforeId) => void move(issue, toStatus, beforeId)}
+      onMoveKeyboard={(direction) => moveByKeyboard(issue, direction)} />
   }
 
   if (loading) return <LoadingState>Loading Kanban board…</LoadingState>
@@ -133,6 +152,7 @@ export function KanbanBoard({ projectId, members, projectActive }: {
         <select aria-label="Filter by assignee" value={assigneeId} onChange={(event) => setAssigneeId(event.target.value)}><option value="">Any assignee</option><option value="unassigned">Unassigned</option>{members.map((member) => <option value={member.userId} key={member.userId}>{member.displayName}</option>)}</select>
         <select aria-label="Filter by priority" value={priority} onChange={(event) => setPriority(event.target.value)}><option value="">Any priority</option>{priorities.map((value) => <option key={value}>{value}</option>)}</select>
         <select aria-label="Filter by issue type" value={type} onChange={(event) => setType(event.target.value)}><option value="">Any type</option>{types.map((value) => <option key={value}>{value}</option>)}</select>
+        {!sprintId && <select aria-label="Group board by assignee" value={groupByAssignee ? 'assignee' : 'none'} onChange={(event) => setGroupByAssignee(event.target.value === 'assignee')}><option value="none">No swimlanes</option><option value="assignee">Group by assignee</option></select>}
         {(search || assigneeId || priority || type) && <button className="text-action" onClick={() => { setSearch(''); setAssigneeId(''); setPriority(''); setType('') }}>Clear filters</button>}
       </div>
       {projectActive && <button className="primary-button compact" disabled={busy} onClick={() => setShowCreateForm((value) => !value)}>Create issue</button>}
@@ -141,17 +161,38 @@ export function KanbanBoard({ projectId, members, projectActive }: {
     {notice && <p className="notice" role="status">{notice}</p>}
     {!projectActive && <p className="member-note">This project is archived. The board is read-only.</p>}
     {showCreateForm && <form className="board-create-form" onSubmit={(event) => void create(event)}><label>Title<input name="title" required maxLength={200} autoFocus /></label><label>Description<textarea name="description" rows={2} maxLength={10000} /></label><div className="board-create-fields"><label>Type<select name="type" defaultValue="TASK">{types.map((value) => <option key={value}>{value}</option>)}</select></label><label>Priority<select name="priority" defaultValue="MEDIUM">{priorities.map((value) => <option key={value}>{value}</option>)}</select></label><label>Assignee<select name="assigneeId" defaultValue=""><option value="">Unassigned</option>{members.map((member) => <option value={member.userId} key={member.userId}>{member.displayName}</option>)}</select></label><label>Due date<input type="date" name="dueDate" /></label></div><div className="button-row"><button className="primary-button compact" disabled={busy}>{busy ? 'Creating…' : 'Create issue'}</button><button type="button" className="text-action" onClick={() => setShowCreateForm(false)}>Cancel</button></div></form>}
-    <div className="kanban-columns">{statuses.map((status) => <section className={`kanban-column${dragOverStatus === status ? ' is-drop-target' : ''}`} key={status} onDragOver={(event) => { event.preventDefault(); setDragOverStatus(status) }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverStatus(null) }} onDrop={(event) => onColumnDrop(event, status)} aria-label={`${status.replace('_', ' ')} issues`}>
-      <header className="kanban-column-heading"><h2><span className={`column-status-dot status-dot-${status.toLowerCase()}`} />{status.replace('_', ' ').toLowerCase()}</h2><span>{columnInfo[status].totalItems}</span></header>
-      <div className="kanban-card-list">{columns[status].map((issue) => <article className={`kanban-card${draggingId === issue.id ? ' is-dragging' : ''}`} key={issue.id} draggable={projectActive && !busy} tabIndex={0} onDragStart={(event) => { if ((event.target as HTMLElement).closest('button, select, a, input, textarea')) { event.preventDefault(); return } event.dataTransfer.setData('text/plain', issue.id); event.dataTransfer.effectAllowed = 'move'; setDraggingId(issue.id) }} onDragEnd={() => { setDraggingId(''); setDragOverStatus(null) }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onCardDrop(event, issue, status)}>
-        <div className="kanban-card-meta"><Link to={`/workspaces/${workspaceId}/issues/${issue.issueKey}`}>{issue.issueKey}</Link><span className={`priority-label priority-${issue.priority.toLowerCase()}`}>{issue.priority.toLowerCase()}</span></div>
-        <Link className="kanban-card-title" to={`/workspaces/${workspaceId}/issues/${issue.issueKey}`}>{issue.title}</Link>
-        <div className="kanban-card-footer"><span className="kanban-card-type">{issue.type.toLowerCase()}</span>{issue.dueDate && <time dateTime={issue.dueDate}>{issue.dueDate}</time>}<span className="kanban-assignee" title={issue.assigneeName ?? 'Unassigned'}>{issue.assigneeName ? issue.assigneeName.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() : '—'}</span></div>
-        {projectActive && <div className="kanban-card-controls"><label className="visually-hidden" htmlFor={`move-${issue.id}`}>Move {issue.issueKey} to status</label><select id={`move-${issue.id}`} aria-label={`Move ${issue.issueKey} to status`} value={issue.status} disabled={busy} onChange={(event) => void move(issue, event.target.value as IssueStatus, null)}>{statuses.map((value) => <option key={value}>{value}</option>)}</select><button type="button" aria-label={`Move ${issue.issueKey} up`} title="Move up" disabled={busy || columns[status].indexOf(issue) === 0} onClick={() => moveByKeyboard(issue, 'up')}>↑</button><button type="button" aria-label={`Move ${issue.issueKey} down`} title="Move down" disabled={busy || columns[status].indexOf(issue) === columns[status].length - 1} onClick={() => moveByKeyboard(issue, 'down')}>↓</button></div>}
-      </article>)}
+    {!groupByAssignee ? <div className="kanban-columns">{statuses.map((status) => <section className={`kanban-column${dragOverStatus === status ? ' is-drop-target' : ''}`} key={status} onDragOver={(event) => { event.preventDefault(); setDragOverStatus(status) }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverStatus(null) }} onDrop={(event) => onColumnDrop(event, status)} aria-label={`${status.replace('_', ' ')} issues`}>
+      <ColumnHeading status={status} count={columnInfo[status].totalItems} /><div className="kanban-card-list">{columns[status].map((issue) => renderCard(issue, status))}
       {!columns[status].length && <p className="kanban-empty">{search || assigneeId || priority || type ? 'No matching issues.' : 'No issues in this column.'}</p>}
       {columnInfo[status].page + 1 < columnInfo[status].totalPages && <button className="kanban-load-more" disabled={loadingMore !== null} onClick={() => void loadMore(status)}>{loadingMore === status ? 'Loading…' : `Load more (${columns[status].length} of ${columnInfo[status].totalItems})`}</button>}
-      </div>
-    </section>)}</div>
+      </div></section>)}</div> : <div className="swimlane-board"><div className="swimlane-header"><span>Assignee</span>{statuses.map((status) => <ColumnHeading key={status} status={status} count={columns[status].length} />)}</div>
+        {members.map((member) => ({ id: member.userId, name: member.displayName })).concat([{ id: 'unassigned', name: 'Unassigned' }])
+          .filter((lane) => statuses.some((status) => columns[status].some((issue) => (issue.assigneeId ?? 'unassigned') === lane.id)))
+          .map((lane) => <div className="swimlane-row" key={lane.id}><strong className="swimlane-label">{lane.name}</strong>{statuses.map((status) => <div key={status} className={`swimlane-cell${dragOverStatus === status ? ' is-drop-target' : ''}`} onDragOver={(event) => { event.preventDefault(); setDragOverStatus(status) }} onDrop={(event) => onColumnDrop(event, status)}>
+            {columns[status].filter((issue) => (issue.assigneeId ?? 'unassigned') === lane.id).map((issue) => renderCard(issue, status))}
+          </div>)}</div>)}
+        {statuses.map((status) => columnInfo[status].page + 1 < columnInfo[status].totalPages && <button key={status} className="kanban-load-more" disabled={loadingMore !== null} onClick={() => void loadMore(status)}>Load more {status.replace('_', ' ').toLowerCase()} ({columns[status].length} of {columnInfo[status].totalItems})</button>)}
+      </div>}
   </section>
+}
+
+function ColumnHeading({ status, count }: { status: IssueStatus; count: number }) {
+  return <header className="kanban-column-heading"><h2><span className={`column-status-dot status-dot-${status.toLowerCase()}`} />{status.replace('_', ' ').toLowerCase()}</h2><span>{count}</span></header>
+}
+
+function BoardIssueCard({ issue, index, columnLength, workspaceId, projectActive, busy, dragging,
+  onDragStart, onDragEnd, onDrop, onMove, onMoveKeyboard }: {
+  issue: Issue; index: number; columnLength: number; workspaceId: string; projectActive: boolean
+  busy: boolean; dragging: boolean; onDragStart: (id: string) => void; onDragEnd: () => void
+  onDrop: (event: DragEvent<HTMLElement>, issue: Issue) => void
+  onMove: (status: IssueStatus, beforeId: string | null) => void; onMoveKeyboard: (direction: 'up' | 'down') => void
+}) {
+  return <article className={`kanban-card${dragging ? ' is-dragging' : ''}`} draggable={projectActive && !busy} tabIndex={0}
+    onDragStart={(event) => { if ((event.target as HTMLElement).closest('button, select, a, input, textarea')) { event.preventDefault(); return } event.dataTransfer.setData('text/plain', issue.id); event.dataTransfer.effectAllowed = 'move'; onDragStart(issue.id) }}
+    onDragEnd={onDragEnd} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, issue)}>
+    <div className="kanban-card-meta"><Link to={`/workspaces/${workspaceId}/issues/${issue.issueKey}`}>{issue.issueKey}</Link><span className={`priority-label priority-${issue.priority.toLowerCase()}`}>{issue.priority.toLowerCase()}</span></div>
+    <Link className="kanban-card-title" to={`/workspaces/${workspaceId}/issues/${issue.issueKey}`}>{issue.title}</Link>
+    <div className="kanban-card-footer"><span className="kanban-card-type">{issue.type.toLowerCase()}</span>{issue.dueDate && <time dateTime={issue.dueDate}>{issue.dueDate}</time>}<span className="kanban-assignee" title={issue.assigneeName ?? 'Unassigned'}>{issue.assigneeName ? issue.assigneeName.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() : '—'}</span></div>
+    {projectActive && <div className="kanban-card-controls"><label className="visually-hidden" htmlFor={`move-${issue.id}`}>Move {issue.issueKey} to status</label><select id={`move-${issue.id}`} aria-label={`Move ${issue.issueKey} to status`} value={issue.status} disabled={busy} onChange={(event) => onMove(event.target.value as IssueStatus, null)}>{statuses.map((value) => <option key={value}>{value}</option>)}</select><button type="button" aria-label={`Move ${issue.issueKey} up`} title="Move up" disabled={busy || index === 0} onClick={() => onMoveKeyboard('up')}>↑</button><button type="button" aria-label={`Move ${issue.issueKey} down`} title="Move down" disabled={busy || index === columnLength - 1} onClick={() => onMoveKeyboard('down')}>↓</button></div>}
+  </article>
 }

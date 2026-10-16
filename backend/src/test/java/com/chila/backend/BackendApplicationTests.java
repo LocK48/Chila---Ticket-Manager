@@ -544,6 +544,105 @@ class BackendApplicationTests {
 				.andExpect(status().isNotFound());
 	}
 
+	@Test
+	void sprintLifecyclePlansIssuesEnforcesRolesAndPreservesClosedHistory() throws Exception {
+		registerUser();
+		Cookie owner = loginAndGetAccessCookie();
+		String workspaceId = createWorkspaceFor(owner);
+		String projectId = createProjectFor(owner, workspaceId);
+		String issueId = createIssue(owner, projectId, "Sprint candidate");
+		String secondIssueId = createIssue(owner, projectId, "Second backlog issue");
+		MvcResult completedIssue = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{id}/issues", projectId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Already complete\",\"type\":\"TASK\",\"status\":\"DONE\"}"), owner))
+				.andExpect(status().isCreated()).andReturn();
+		String completedIssueId = objectMapper.readTree(completedIssue.getResponse().getContentAsString()).get("id").asText();
+		String sprintJson = "{\"name\":\"Sprint One\",\"goal\":\"Ship core work\","
+				+ "\"startDate\":\"2026-01-01\",\"endDate\":\"2026-12-31\"}";
+		MvcResult sprintCreated = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{id}/sprints", projectId)
+				.contentType(MediaType.APPLICATION_JSON).content(sprintJson), owner))
+				.andExpect(status().isCreated()).andExpect(jsonPath("$.state").value("FUTURE")).andReturn();
+		String sprintId = objectMapper.readTree(sprintCreated.getResponse().getContentAsString()).get("id").asText();
+		MvcResult otherWorkspace = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces")
+				.contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Other sprint workspace\"}"), owner))
+				.andExpect(status().isCreated()).andReturn();
+		String otherWorkspaceId = objectMapper.readTree(otherWorkspace.getResponse().getContentAsString()).get("id").asText();
+		String otherProjectId = createProjectFor(owner, otherWorkspaceId);
+		MvcResult otherSprint = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{id}/sprints", otherProjectId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Foreign sprint\"}"), owner))
+				.andExpect(status().isCreated()).andReturn();
+		String otherSprintId = objectMapper.readTree(otherSprint.getResponse().getContentAsString()).get("id").asText();
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/issues/{id}/sprint", issueId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"sprintId\":\"" + otherSprintId + "\"}"), owner))
+				.andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("SPRINT_NOT_FOUND"));
+		mockMvc.perform(get("/api/v1/projects/{id}/backlog", projectId).param("sort", "rank").cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(issueId))
+				.andExpect(jsonPath("$.items[1].id").value(secondIssueId));
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/issues/{id}/sprint", secondIssueId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"beforeIssueId\":\"" + issueId + "\"}"), owner))
+				.andExpect(status().isOk());
+		mockMvc.perform(get("/api/v1/projects/{id}/backlog", projectId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(secondIssueId));
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{projectId}/sprints/{sprintId}/issues", projectId, sprintId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"issueIds\":[\"" + issueId + "\",\"" + completedIssueId + "\"]}"), owner))
+				.andExpect(status().isNoContent());
+		mockMvc.perform(get("/api/v1/projects/{id}/backlog", projectId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(1));
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{projectId}/sprints/{sprintId}/start", projectId, sprintId), owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.state").value("ACTIVE"));
+		mockMvc.perform(get("/api/v1/projects/{projectId}/sprints/{sprintId}/issues", projectId, sprintId)
+				.param("status", "TODO").cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(1))
+				.andExpect(jsonPath("$.items[0].sprintId").value(sprintId));
+
+		MvcResult secondCreated = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{id}/sprints", projectId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Sprint Two\",\"startDate\":\"2026-01-01\",\"endDate\":\"2026-12-31\"}"), owner))
+				.andExpect(status().isCreated()).andReturn();
+		String secondSprintId = objectMapper.readTree(secondCreated.getResponse().getContentAsString()).get("id").asText();
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{projectId}/sprints/{sprintId}/start", projectId, secondSprintId), owner))
+				.andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("SPRINT_CONFLICT"));
+
+		mockMvc.perform(registrationRequest("{\"email\":\"sprint-member@example.com\","
+				+ "\"password\":\"long-enough-password\",\"displayName\":\"Sprint Member\"}"))
+				.andExpect(status().isCreated());
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces/{id}/members", workspaceId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"sprint-member@example.com\",\"role\":\"MEMBER\"}"), owner))
+				.andExpect(status().isCreated());
+		Cookie member = loginAndGetAccessCookie("sprint-member@example.com");
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{id}/sprints", projectId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Unauthorized sprint\"}"), member))
+				.andExpect(status().isForbidden());
+
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{projectId}/sprints/{sprintId}/complete", projectId, sprintId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"unfinishedIssueAction\":\"BACKLOG\"}"), owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.state").value("CLOSED"));
+		mockMvc.perform(get("/api/v1/projects/{id}/backlog", projectId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(2));
+		mockMvc.perform(get("/api/v1/projects/{id}/sprints", projectId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$[?(@.id == '" + sprintId + "')].state").value(org.hamcrest.Matchers.contains("CLOSED")));
+		mockMvc.perform(get("/api/v1/projects/{projectId}/sprints/{sprintId}/issues", projectId, sprintId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(1))
+				.andExpect(jsonPath("$.items[0].id").value(completedIssueId));
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/issues/{id}/sprint", completedIssueId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"sprintId\":null}"), owner))
+				.andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("SPRINT_CONFLICT"));
+
+		MvcResult thirdCreated = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{id}/sprints", projectId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Sprint Three\"}"), owner))
+				.andExpect(status().isCreated()).andReturn();
+		String thirdSprintId = objectMapper.readTree(thirdCreated.getResponse().getContentAsString()).get("id").asText();
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{projectId}/sprints/{sprintId}/issues", projectId, secondSprintId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"issueIds\":[\"" + secondIssueId + "\"]}"), owner))
+				.andExpect(status().isNoContent());
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{projectId}/sprints/{sprintId}/start", projectId, secondSprintId), owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.state").value("ACTIVE"));
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{projectId}/sprints/{sprintId}/complete", projectId, secondSprintId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"unfinishedIssueAction\":\"FUTURE_SPRINT\",\"targetSprintId\":\"" + thirdSprintId + "\"}"), owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.state").value("CLOSED"));
+		mockMvc.perform(get("/api/v1/projects/{projectId}/sprints/{sprintId}/issues", projectId, thirdSprintId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(1))
+				.andExpect(jsonPath("$.items[0].id").value(secondIssueId));
+	}
+
 	private String createIssue(Cookie owner, String projectId, String title) throws Exception {
 		MvcResult created = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{id}/issues", projectId)
 				.contentType(MediaType.APPLICATION_JSON)

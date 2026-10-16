@@ -75,7 +75,7 @@ public class ProjectService {
 
     @Transactional
     public ProjectResponse updateStatus(UUID actorId, UUID projectId, UpdateProjectStatusRequest request) {
-        ProjectEntity project = requireProject(projectId);
+        ProjectEntity project = projectRepository.findByIdForUpdate(projectId).orElseThrow(ProjectNotFoundException::new);
         requireManager(project.getWorkspace().getId(), actorId);
         project.setStatus(request.status());
         return response(project);

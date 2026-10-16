@@ -13,6 +13,8 @@ import com.chila.backend.issue.InvalidStatusTransitionException;
 import com.chila.backend.notification.NotificationNotFoundException;
 import com.chila.backend.project.DuplicateProjectKeyException;
 import com.chila.backend.project.ProjectNotFoundException;
+import com.chila.backend.sprint.SprintConflictException;
+import com.chila.backend.sprint.SprintNotFoundException;
 import com.chila.backend.workspace.MembershipConflictException;
 import com.chila.backend.workspace.WorkspaceAccessDeniedException;
 import com.chila.backend.workspace.WorkspaceNotFoundException;
@@ -116,6 +118,18 @@ public class GlobalExceptionHandler {
             ProjectNotFoundException exception,
             HttpServletRequest request) {
         return response(HttpStatus.NOT_FOUND, "PROJECT_NOT_FOUND", exception.getMessage(), request, Map.of());
+    }
+
+    @ExceptionHandler(SprintNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleSprintNotFound(SprintNotFoundException exception,
+            HttpServletRequest request) {
+        return response(HttpStatus.NOT_FOUND, "SPRINT_NOT_FOUND", exception.getMessage(), request, Map.of());
+    }
+
+    @ExceptionHandler(SprintConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleSprintConflict(SprintConflictException exception,
+            HttpServletRequest request) {
+        return response(HttpStatus.CONFLICT, "SPRINT_CONFLICT", exception.getMessage(), request, Map.of());
     }
 
     @ExceptionHandler(DuplicateProjectKeyException.class)

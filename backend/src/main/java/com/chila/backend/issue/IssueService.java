@@ -11,6 +11,12 @@ import com.chila.backend.issue.api.CreateIssueRequest;
 import com.chila.backend.issue.api.IssuePageResponse;
 import com.chila.backend.issue.api.IssueResponse;
 import com.chila.backend.issue.api.MoveIssueRequest;
+import com.chila.backend.sprint.SprintConflictException;
+import com.chila.backend.sprint.SprintEntity;
+import com.chila.backend.sprint.SprintNotFoundException;
+import com.chila.backend.sprint.SprintRepository;
+import com.chila.backend.sprint.SprintState;
+import com.chila.backend.sprint.api.AssignSprintRequest;
 import com.chila.backend.issue.api.UpdateIssueRequest;
 import com.chila.backend.project.ProjectEntity;
 import com.chila.backend.project.ProjectNotFoundException;
@@ -42,6 +48,7 @@ public class IssueService {
     private final UserRepository userRepository;
     private final IssueActivityService activityService;
     private final NotificationService notificationService;
+    private final SprintRepository sprintRepository;
 
     public IssueService(
             IssueRepository issueRepository,
@@ -49,13 +56,15 @@ public class IssueService {
             MembershipRepository membershipRepository,
             UserRepository userRepository,
             IssueActivityService activityService,
-            NotificationService notificationService) {
+            NotificationService notificationService,
+            SprintRepository sprintRepository) {
         this.issueRepository = issueRepository;
         this.projectRepository = projectRepository;
         this.membershipRepository = membershipRepository;
         this.userRepository = userRepository;
         this.activityService = activityService;
         this.notificationService = notificationService;
+        this.sprintRepository = sprintRepository;
     }
 
     @Transactional
@@ -68,13 +77,92 @@ public class IssueService {
         IssueStatus status = request.status() == null ? IssueStatus.TODO : request.status();
         long issueNumber = project.allocateIssueNumber();
         long rank = nextRank(project.getId(), status);
+        long backlogRank = Math.addExact(issueRepository.findMaxBacklogRank(project.getId()), RANK_STEP);
         IssueEntity issue = issueRepository.save(new IssueEntity(project, reporter, request.title().trim(),
                 normalizeDescription(request.description()), request.type(), status,
                 request.priority() == null ? IssuePriority.MEDIUM : request.priority(),
-                assignee, request.dueDate(), issueNumber, rank));
+                assignee, request.dueDate(), issueNumber, rank, backlogRank));
         activityService.record(issue, reporter, "CREATED", null, null, null);
         notificationService.onAssignment(issue, assignee, actorId);
         return response(issue);
+    }
+
+    @Transactional(readOnly = true)
+    public IssuePageResponse backlog(UUID actorId, UUID projectId, IssuePriority priority, IssueType type,
+            UUID assigneeId, boolean unassigned, String search, int page, int size) {
+        ProjectEntity project = requireProject(projectId);
+        requireWorkspaceMember(project, actorId);
+        if (page < 0) throw new InvalidInputException("page", "Page must be zero or greater.");
+        if (size < 1 || size > 100) throw new InvalidInputException("size", "Page size must be between 1 and 100.");
+        if (unassigned && assigneeId != null) throw new InvalidInputException("assigneeId", "Choose a member or unassigned issues, not both.");
+        Page<IssueEntity> results = issueRepository.searchBacklog(projectId,
+                StringUtils.hasText(search) ? "%" + search.trim().toLowerCase() + "%" : "%",
+                priority, type, assigneeId, unassigned,
+                PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "backlogRank").and(Sort.by("id"))));
+        return new IssuePageResponse(results.getContent().stream().map(IssueService::response).toList(),
+                results.getNumber(), results.getSize(), results.getTotalElements(), results.getTotalPages());
+    }
+
+    @Transactional
+    public IssueResponse assignSprint(UUID actorId, UUID issueId, AssignSprintRequest request) {
+        IssueEntity issue = requireIssue(issueId);
+        ProjectEntity project = lockProject(issue.getProject().getId());
+        requireWorkspaceMember(project, actorId);
+        requireActiveProject(project);
+        if (issue.getArchivedAt() != null) throw new IssueArchivedException();
+        if (issue.getSprint() != null && issue.getSprint().getState() == SprintState.CLOSED) {
+            throw new SprintConflictException("Issues in closed sprints cannot be reassigned.");
+        }
+        SprintEntity target = null;
+        if (request.sprintId() != null) {
+            target = sprintRepository.findByIdAndProject_Id(request.sprintId(), project.getId())
+                    .orElseThrow(SprintNotFoundException::new);
+            if (target.getState() == SprintState.CLOSED) throw new SprintConflictException("Issues cannot be added to a closed sprint.");
+        }
+        if (target == null) {
+            long rank;
+            if (request.beforeIssueId() == null) {
+                long maxRank = issueRepository.findMaxBacklogRankExcluding(project.getId(), issueId);
+                rank = issue.getSprint() == null && issue.getBacklogRank() >= maxRank
+                        ? issue.getBacklogRank() : Math.addExact(maxRank, RANK_STEP);
+            } else {
+                IssueEntity before = issueRepository.findBacklogIssue(project.getId(), request.beforeIssueId())
+                        .orElseThrow(() -> new InvalidInputException("beforeIssueId", "Choose an issue from this project's backlog."));
+                List<IssueEntity> previous = issueRepository.findPreviousBacklogIssue(project.getId(), issueId,
+                        before.getBacklogRank(), PageRequest.of(0, 1));
+                if (previous.isEmpty() && before.getBacklogRank() > 1) {
+                    rank = before.getBacklogRank() / 2;
+                } else if (!previous.isEmpty() && before.getBacklogRank() - previous.get(0).getBacklogRank() > 1) {
+                    rank = rankBetween(previous.get(0).getBacklogRank(), before.getBacklogRank());
+                } else {
+                    List<IssueEntity> ordered = issueRepository
+                            .findByProject_IdAndSprintIsNullAndArchivedAtIsNullOrderByBacklogRankAscIdAsc(project.getId());
+                    ordered.removeIf(existing -> existing.getId().equals(issueId));
+                    int index = 0;
+                    while (index < ordered.size() && !ordered.get(index).getId().equals(before.getId())) index++;
+                    ordered.add(index, issue);
+                    for (int position = 0; position < ordered.size(); position++) {
+                        ordered.get(position).setBacklogRank((position + 1L) * RANK_STEP);
+                    }
+                    rank = issue.getBacklogRank();
+                }
+            }
+            issue.assignToSprint(null);
+            issue.setBacklogRank(rank);
+        } else {
+            if (request.beforeIssueId() != null) throw new InvalidInputException("beforeIssueId", "Issue positioning is available only in the backlog.");
+            if (issue.getSprint() != null && !issue.getSprint().getId().equals(target.getId())) {
+                throw new InvalidInputException("sprintId", "Return the issue to the backlog before planning it in another sprint.");
+            }
+            issue.assignToSprint(target);
+            issue.setBacklogRank(Math.addExact(issueRepository.findMaxBacklogRankInSprint(project.getId(), target.getId()), RANK_STEP));
+        }
+        return response(issue);
+    }
+
+    private static long rankBetween(long left, long right) {
+        if (right - left > 1) return left + (right - left) / 2;
+        return Math.addExact(left, 1);
     }
 
     @Transactional(readOnly = true)
@@ -150,6 +238,10 @@ public class IssueService {
         requireActiveProject(project);
         if (issue.getArchivedAt() != null) throw new IssueArchivedException();
         UserEntity assignee = resolveAssignee(issue.getProject(), request.assigneeId());
+        if (issue.getSprint() != null && issue.getSprint().getState() == SprintState.CLOSED
+                && issue.getStatus() != request.status()) {
+            throw new SprintConflictException("Workflow status cannot change for an issue in a closed sprint.");
+        }
         validateTransition(issue.getStatus(), request.status());
         UserEntity actor = userRepository.findById(actorId).orElseThrow(UserNotFoundException::new);
         recordChange(issue, actor, "title", issue.getTitle(), request.title().trim());
@@ -179,6 +271,9 @@ public class IssueService {
         requireWorkspaceMember(project, actorId);
         requireActiveProject(project);
         if (issue.getArchivedAt() != null) throw new IssueArchivedException();
+        if (issue.getSprint() != null && issue.getSprint().getState() == SprintState.CLOSED) {
+            throw new SprintConflictException("Issues in closed sprints cannot be moved on the board.");
+        }
         if (issue.getStatus() != request.status()) validateTransition(issue.getStatus(), request.status());
 
         List<IssueEntity> target = new ArrayList<>(issueRepository
@@ -345,7 +440,8 @@ public class IssueService {
         UserEntity reporter = issue.getReporter();
         UserEntity assignee = issue.getAssignee();
         String projectKey = issue.getProject().getKey();
-        return new IssueResponse(issue.getId(), issue.getProject().getId(), projectKey,
+        return new IssueResponse(issue.getId(), issue.getProject().getId(),
+                issue.getSprint() == null ? null : issue.getSprint().getId(), projectKey,
                 projectKey + "-" + issue.getIssueNumber(), issue.getIssueNumber(),
                 issue.getTitle(), issue.getDescription(), issue.getType(), issue.getStatus(), issue.getPriority(),
                 reporter.getId(), reporter.getDisplayName(), assignee == null ? null : assignee.getId(),

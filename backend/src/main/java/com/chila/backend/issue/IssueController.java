@@ -8,6 +8,7 @@ import com.chila.backend.issue.api.IssuePageResponse;
 import com.chila.backend.issue.api.IssueResponse;
 import com.chila.backend.issue.api.MoveIssueRequest;
 import com.chila.backend.issue.api.UpdateIssueRequest;
+import com.chila.backend.sprint.api.AssignSprintRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -57,6 +58,16 @@ public class IssueController {
                 unassigned, search, includeArchived, page, size, sort, direction);
     }
 
+    @GetMapping("/api/v1/projects/{projectId}/backlog")
+    public IssuePageResponse backlog(JwtAuthenticationToken authentication, @PathVariable UUID projectId,
+            @RequestParam(required = false) IssuePriority priority, @RequestParam(required = false) IssueType type,
+            @RequestParam(required = false) UUID assigneeId, @RequestParam(defaultValue = "false") boolean unassigned,
+            @RequestParam(required = false) String search, @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return issueService.backlog(userId(authentication), projectId, priority, type, assigneeId,
+                unassigned, search, page, size);
+    }
+
     @GetMapping("/api/v1/issues/{issueId}")
     public IssueResponse get(JwtAuthenticationToken authentication, @PathVariable UUID issueId) {
         return issueService.get(userId(authentication), issueId);
@@ -80,6 +91,12 @@ public class IssueController {
     public IssueResponse move(JwtAuthenticationToken authentication, @PathVariable UUID issueId,
             @Valid @RequestBody MoveIssueRequest request) {
         return issueService.move(userId(authentication), issueId, request);
+    }
+
+    @PatchMapping("/api/v1/issues/{issueId}/sprint")
+    public IssueResponse assignSprint(JwtAuthenticationToken authentication, @PathVariable UUID issueId,
+            @Valid @RequestBody AssignSprintRequest request) {
+        return issueService.assignSprint(userId(authentication), issueId, request);
     }
 
     @DeleteMapping("/api/v1/issues/{issueId}")

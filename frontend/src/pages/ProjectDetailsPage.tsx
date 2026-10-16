@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useOutletContext, useParams } from 'react-router
 import { ApiError, listProjects, listWorkspaceMembers, updateProject, type Project, type WorkspaceMember } from '../auth/api'
 import { IssuesPanel } from '../features/issues/IssuesPanel'
 import { KanbanBoard } from '../features/issues/KanbanBoard'
+import { BacklogView, ActiveSprintView } from '../features/sprints/SprintPages'
 import { PageHeader } from '../components/ui/PageHeader'
 import { ErrorState, LoadingState } from '../components/ui/StateMessage'
 import { useAppLayout } from '../layouts/app-layout-context'
@@ -30,7 +31,7 @@ export function ProjectDetailsPage() {
   return <>
     <p className="breadcrumb"><Link to={`/workspaces/${workspaceId}/projects`}>Projects</Link><span>/</span>{project.key}</p>
     <PageHeader eyebrow={project.key} title={project.name} description={project.description || 'No project description.'} action={canManage ? <Link className="secondary-button" to={`/workspaces/${workspaceId}/projects/${project.id}/settings`}>Project settings</Link> : undefined} />
-    <nav className="project-tabs" aria-label="Project pages"><NavLink end to={`/workspaces/${workspaceId}/projects/${project.id}`}>Issues</NavLink><NavLink to={`/workspaces/${workspaceId}/projects/${project.id}/board`}>Board</NavLink><NavLink to={`/workspaces/${workspaceId}/projects/${project.id}/overview`}>Overview</NavLink>{canManage && <NavLink to={`/workspaces/${workspaceId}/projects/${project.id}/settings`}>Settings</NavLink>}</nav>
+    <nav className="project-tabs" aria-label="Project pages"><NavLink end to={`/workspaces/${workspaceId}/projects/${project.id}`}>Issues</NavLink><NavLink to={`/workspaces/${workspaceId}/projects/${project.id}/board`}>Board</NavLink><NavLink to={`/workspaces/${workspaceId}/projects/${project.id}/backlog`}>Backlog</NavLink><NavLink to={`/workspaces/${workspaceId}/projects/${project.id}/active-sprint`}>Active sprint</NavLink><NavLink to={`/workspaces/${workspaceId}/projects/${project.id}/overview`}>Overview</NavLink>{canManage && <NavLink to={`/workspaces/${workspaceId}/projects/${project.id}/settings`}>Settings</NavLink>}</nav>
     <Outlet context={{ project, members, canManage, setProject }} />
   </>
 }
@@ -48,6 +49,15 @@ export function ProjectOverviewTab() {
 export function ProjectBoardTab() {
   const { project, members } = useProjectContext()
   return <KanbanBoard projectId={project.id} members={members} projectActive={project.status === 'ACTIVE'} />
+}
+
+export function ProjectBacklogRoute() {
+  const { project, members, canManage } = useProjectContext()
+  return <BacklogView project={project} members={members} canManage={canManage} projectActive={project.status === 'ACTIVE'} />
+}
+export function ProjectActiveSprintRoute() {
+  const { project, members, canManage } = useProjectContext()
+  return <ActiveSprintView project={project} members={members} canManage={canManage} projectActive={project.status === 'ACTIVE'} />
 }
 
 export function ProjectSettingsTab() {
