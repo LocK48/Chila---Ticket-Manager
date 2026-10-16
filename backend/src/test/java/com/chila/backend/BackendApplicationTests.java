@@ -700,6 +700,47 @@ class BackendApplicationTests {
 				.andExpect(status().isNotFound());
 	}
 
+	@Test
+	void workflowTransitionsAndSavedFiltersAreProjectScoped() throws Exception {
+		registerUser();
+		Cookie owner = loginAndGetAccessCookie();
+		String workspaceId = createWorkspaceFor(owner);
+		String projectId = createProjectFor(owner, workspaceId);
+		String issueId = createIssue(owner, projectId, "Workflow task");
+
+		mockMvc.perform(get("/api/v1/projects/{id}/workflow", projectId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.statuses.length()").value(4))
+				.andExpect(jsonPath("$.transitions.length()").value(6));
+		mockMvc.perform(authenticatedCsrfRequest(put("/api/v1/projects/{id}/workflow/transitions", projectId)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("[{\"from\":\"TODO\",\"to\":\"DONE\"}]"), owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.transitions.length()").value(1));
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/issues/{id}", issueId)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"title\":\"Workflow task\",\"description\":null,\"type\":\"TASK\","
+						+ "\"status\":\"IN_PROGRESS\",\"priority\":\"MEDIUM\",\"assigneeId\":null,\"dueDate\":null}"), owner))
+				.andExpect(status().isBadRequest());
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/issues/{id}", issueId)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"title\":\"Workflow task\",\"description\":null,\"type\":\"TASK\","
+						+ "\"status\":\"DONE\",\"priority\":\"MEDIUM\",\"assigneeId\":null,\"dueDate\":\"2027-02-01\"}"), owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DONE"));
+
+		MvcResult saved = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{id}/filters", projectId)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"name\":\"Due done\",\"visibility\":\"WORKSPACE\",\"status\":\"DONE\","
+						+ "\"priority\":null,\"type\":null,\"assigneeId\":null,\"unassigned\":false,"
+						+ "\"sprintId\":null,\"epicId\":null,\"dueFrom\":\"2027-01-01\",\"dueTo\":\"2027-03-01\",\"search\":\"workflow\"}"), owner))
+				.andExpect(status().isCreated()).andExpect(jsonPath("$.visibility").value("WORKSPACE"))
+				.andExpect(jsonPath("$.dueFrom").value("2027-01-01")).andReturn();
+		String filterId = objectMapper.readTree(saved.getResponse().getContentAsString()).get("id").asText();
+		mockMvc.perform(get("/api/v1/projects/{id}/filters", projectId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(filterId));
+		mockMvc.perform(get("/api/v1/projects/{id}/issues", projectId).param("status", "DONE")
+				.param("dueFrom", "2027-01-01").param("dueTo", "2027-03-01").param("search", "workflow").cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(1));
+	}
+
 	private String createIssue(Cookie owner, String projectId, String title) throws Exception {
 		MvcResult created = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{id}/issues", projectId)
 				.contentType(MediaType.APPLICATION_JSON)

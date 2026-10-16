@@ -170,11 +170,25 @@ export type IssueFilters = {
   unassigned?: boolean;
   search?: string;
   includeArchived?: boolean;
+  sprintId?: string;
+  epicId?: string;
+  dueFrom?: string;
+  dueTo?: string;
   page?: number;
   size?: number;
   sort?: string;
   direction?: "asc" | "desc";
 };
+export type SavedFilterVisibility = "PRIVATE" | "WORKSPACE";
+export type SavedFilter = {
+  id: string; projectId: string; creatorId: string; name: string; visibility: SavedFilterVisibility;
+  status: IssueStatus | null; priority: IssuePriority | null; type: IssueType | null;
+  assigneeId: string | null; unassigned: boolean; sprintId: string | null; epicId: string | null;
+  dueFrom: string | null; dueTo: string | null; search: string | null; createdAt: string; updatedAt: string;
+};
+export type SavedFilterInput = Omit<SavedFilter, "id" | "projectId" | "creatorId" | "createdAt" | "updatedAt">;
+export type WorkflowTransition = { from: IssueStatus; to: IssueStatus };
+export type Workflow = { statuses: IssueStatus[]; transitions: WorkflowTransition[] };
 export type SprintState = "FUTURE" | "ACTIVE" | "CLOSED";
 export type Sprint = {
   id: string;
@@ -435,6 +449,24 @@ export async function listIssues(
   return request<IssuePage>(
     `/api/v1/projects/${encodeURIComponent(projectId)}/issues?${query}`,
   );
+}
+export async function listSavedFilters(projectId: string): Promise<SavedFilter[]> {
+  return request<SavedFilter[]>(`/api/v1/projects/${encodeURIComponent(projectId)}/filters`);
+}
+export async function createSavedFilter(projectId: string, input: SavedFilterInput): Promise<SavedFilter> {
+  return request<SavedFilter>(`/api/v1/projects/${encodeURIComponent(projectId)}/filters`, { method: "POST", body: JSON.stringify(input) });
+}
+export async function updateSavedFilter(projectId: string, filterId: string, input: SavedFilterInput): Promise<SavedFilter> {
+  return request<SavedFilter>(`/api/v1/projects/${encodeURIComponent(projectId)}/filters/${encodeURIComponent(filterId)}`, { method: "PUT", body: JSON.stringify(input) });
+}
+export async function deleteSavedFilter(projectId: string, filterId: string): Promise<void> {
+  return request<void>(`/api/v1/projects/${encodeURIComponent(projectId)}/filters/${encodeURIComponent(filterId)}`, { method: "DELETE" });
+}
+export async function getWorkflow(projectId: string): Promise<Workflow> {
+  return request<Workflow>(`/api/v1/projects/${encodeURIComponent(projectId)}/workflow`);
+}
+export async function updateWorkflow(projectId: string, transitions: WorkflowTransition[]): Promise<Workflow> {
+  return request<Workflow>(`/api/v1/projects/${encodeURIComponent(projectId)}/workflow/transitions`, { method: "PUT", body: JSON.stringify(transitions) });
 }
 export async function listBacklog(
   projectId: string,

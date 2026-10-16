@@ -2786,8 +2786,14 @@ select:focus {
 .epic-color-dot { width: 10px; height: 10px; border-radius: 50%; }
 .inline-link-form { display: flex; flex-wrap: wrap; gap: 8px; }
 .inline-link-form input { flex: 1 1 180px; }
+.workflow-settings { display: grid; gap: 14px; margin-top: 22px; }
+.workflow-settings h2, .workflow-settings p { margin: 0; }
+.workflow-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.workflow-grid fieldset { display: grid; gap: 8px; min-width: 0; padding: 12px; border: 1px solid var(--line, #e5e7eb); border-radius: 10px; }
+.workflow-grid legend { padding: 0 5px; color: var(--muted, #667085); font-size: .82rem; }
+.workflow-grid label { display: flex; align-items: center; gap: 7px; font-size: .86rem; }
 @media (max-width: 640px) {
-  .hierarchy-form, .release-form, .hierarchy-fields { grid-template-columns: 1fr; }
+  .hierarchy-form, .release-form, .hierarchy-fields, .workflow-grid { grid-template-columns: 1fr; }
   .hierarchy-issue-row { grid-template-columns: 82px minmax(0, 1fr); }
   .hierarchy-issue-row small { grid-column: 2; text-align: left; }
   .filter-row { flex-direction: column; }

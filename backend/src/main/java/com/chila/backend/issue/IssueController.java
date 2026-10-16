@@ -2,6 +2,7 @@ package com.chila.backend.issue;
 
 import java.net.URI;
 import java.util.UUID;
+import java.time.LocalDate;
 
 import com.chila.backend.issue.api.CreateIssueRequest;
 import com.chila.backend.issue.api.IssuePageResponse;
@@ -50,12 +51,16 @@ public class IssueController {
             @RequestParam(defaultValue = "false") boolean unassigned,
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "false") boolean includeArchived,
+            @RequestParam(required = false) UUID sprintId,
+            @RequestParam(required = false) UUID epicId,
+            @RequestParam(required = false) LocalDate dueFrom,
+            @RequestParam(required = false) LocalDate dueTo,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdAt") String sort,
             @RequestParam(defaultValue = "desc") String direction) {
         return issueService.list(userId(authentication), projectId, status, priority, type, assigneeId,
-                unassigned, search, includeArchived, page, size, sort, direction);
+                unassigned, search, includeArchived, sprintId, epicId, dueFrom, dueTo, page, size, sort, direction);
     }
 
     @GetMapping("/api/v1/projects/{projectId}/backlog")

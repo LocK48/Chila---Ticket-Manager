@@ -8,11 +8,15 @@ import {
 } from "react-router-dom";
 import {
   ApiError,
+  getWorkflow,
   listProjects,
   listWorkspaceMembers,
   updateProject,
+  updateWorkflow,
   type Project,
   type WorkspaceMember,
+  type IssueStatus,
+  type WorkflowTransition,
 } from "../auth/api";
 import { IssuesPanel } from "../features/issues/IssuesPanel";
 import { EpicsPage, ReleasesPage } from "../features/hierarchy/HierarchyPages";
@@ -307,8 +311,35 @@ export function ProjectSettingsTab() {
       >
         Back to projects
       </Link>
+      <WorkflowSettings projectId={project.id} />
     </>
   );
+}
+
+function WorkflowSettings({ projectId }: { projectId: string }) {
+  const statuses: IssueStatus[] = ["TODO", "IN_PROGRESS", "IN_REVIEW", "DONE"];
+  const [allowed, setAllowed] = useState<WorkflowTransition[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  useEffect(() => { void getWorkflow(projectId).then((workflow) => { setAllowed(workflow.transitions); setLoaded(true); }).catch((e: unknown) => { setMessage(e instanceof ApiError ? e.message : "Could not load workflow."); setLoaded(true); }); }, [projectId]);
+  function toggle(from: IssueStatus, to: IssueStatus) {
+    setAllowed((current) => current.some((item) => item.from === from && item.to === to)
+      ? current.filter((item) => item.from !== from || item.to !== to)
+      : [...current, { from, to }]);
+  }
+  async function saveWorkflow() {
+    setBusy(true); setMessage("");
+    try { const result = await updateWorkflow(projectId, allowed); setAllowed(result.transitions); setMessage("Workflow saved."); }
+    catch (e) { setMessage(e instanceof ApiError ? e.message : "Could not save workflow."); }
+    finally { setBusy(false); }
+  }
+  return <section className="detail-card workflow-settings">
+    <h2>Workflow transitions</h2><p className="subtle">Choose which status changes are allowed. These rules are enforced by the server for issue edits and board moves.</p>
+    {message && <p className={message.includes("saved") ? "notice" : "form-error"} role="status">{message}</p>}
+    {!loaded ? <p className="subtle">Loading workflow…</p> : <div className="workflow-grid">{statuses.map((from) => <fieldset key={from}><legend>From {from.replace("_", " ")}</legend>{statuses.filter((to) => to !== from).map((to) => <label key={to}><input type="checkbox" checked={allowed.some((item) => item.from === from && item.to === to)} onChange={() => toggle(from, to)} /> To {to.replace("_", " ")}</label>)}</fieldset>)}</div>}
+    <button className="primary-button compact" disabled={!loaded || busy} onClick={() => void saveWorkflow()}>{busy ? "Saving…" : "Save workflow"}</button>
+  </section>;
 }
 
 function useProjectContext() {

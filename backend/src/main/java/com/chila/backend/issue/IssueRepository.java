@@ -12,7 +12,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface IssueRepository extends JpaRepository<IssueEntity, UUID> {
 
-    @Query(value = "select i from IssueEntity i join fetch i.project p join fetch p.workspace "
+            @Query(value = "select i from IssueEntity i join fetch i.project p join fetch p.workspace "
+            + "left join i.sprint sprint left join i.epic epic "
             + "join fetch i.reporter left join fetch i.assignee "
             + "where p.id = :projectId "
             + "and (:status is null or i.status = :status) "
@@ -20,16 +21,24 @@ public interface IssueRepository extends JpaRepository<IssueEntity, UUID> {
             + "and (:type is null or i.type = :type) "
             + "and (:assigneeId is null or i.assignee.id = :assigneeId) "
             + "and (:unassigned = false or i.assignee is null) "
+            + "and (:sprintId is null or sprint.id = :sprintId) "
+            + "and (:epicId is null or epic.id = :epicId) "
+            + "and (:dueFrom is null or i.dueDate >= :dueFrom) "
+            + "and (:dueTo is null or i.dueDate <= :dueTo) "
             + "and (:search = '%' or lower(i.title) like :search "
             + "or lower(coalesce(i.description, '')) like :search "
             + "or lower(concat(concat(p.key, '-'), cast(i.issueNumber as string))) like :search) "
             + "and (:includeArchived = true or i.archivedAt is null)",
-            countQuery = "select count(i) from IssueEntity i join i.project p where p.id = :projectId "
+            countQuery = "select count(i) from IssueEntity i join i.project p left join i.sprint sprint left join i.epic epic where p.id = :projectId "
                     + "and (:status is null or i.status = :status) "
                     + "and (:priority is null or i.priority = :priority) "
                     + "and (:type is null or i.type = :type) "
                     + "and (:assigneeId is null or i.assignee.id = :assigneeId) "
                     + "and (:unassigned = false or i.assignee is null) "
+                    + "and (:sprintId is null or sprint.id = :sprintId) "
+                    + "and (:epicId is null or epic.id = :epicId) "
+                    + "and (:dueFrom is null or i.dueDate >= :dueFrom) "
+                    + "and (:dueTo is null or i.dueDate <= :dueTo) "
                     + "and (:search = '%' or lower(i.title) like :search "
                     + "or lower(coalesce(i.description, '')) like :search "
                     + "or lower(concat(concat(p.key, '-'), cast(i.issueNumber as string))) like :search) "
@@ -42,6 +51,10 @@ public interface IssueRepository extends JpaRepository<IssueEntity, UUID> {
             @Param("assigneeId") UUID assigneeId,
             @Param("unassigned") boolean unassigned,
             @Param("search") String search,
+            @Param("sprintId") UUID sprintId,
+            @Param("epicId") UUID epicId,
+            @Param("dueFrom") java.time.LocalDate dueFrom,
+            @Param("dueTo") java.time.LocalDate dueTo,
             @Param("includeArchived") boolean includeArchived,
             Pageable pageable);
 

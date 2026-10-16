@@ -30,6 +30,7 @@ import com.chila.backend.workspace.MembershipEntity;
 import com.chila.backend.workspace.MembershipRepository;
 import com.chila.backend.workspace.MembershipRole;
 import com.chila.backend.workspace.WorkspaceAccessDeniedException;
+import com.chila.backend.workflow.WorkflowService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -49,6 +50,7 @@ public class IssueService {
     private final IssueActivityService activityService;
     private final NotificationService notificationService;
     private final SprintRepository sprintRepository;
+    private final WorkflowService workflowService;
 
     public IssueService(
             IssueRepository issueRepository,
@@ -57,7 +59,8 @@ public class IssueService {
             UserRepository userRepository,
             IssueActivityService activityService,
             NotificationService notificationService,
-            SprintRepository sprintRepository) {
+            SprintRepository sprintRepository,
+            WorkflowService workflowService) {
         this.issueRepository = issueRepository;
         this.projectRepository = projectRepository;
         this.membershipRepository = membershipRepository;
@@ -65,6 +68,7 @@ public class IssueService {
         this.activityService = activityService;
         this.notificationService = notificationService;
         this.sprintRepository = sprintRepository;
+        this.workflowService = workflowService;
     }
 
     @Transactional
@@ -187,6 +191,10 @@ public class IssueService {
             boolean unassigned,
             String search,
             boolean includeArchived,
+            UUID sprintId,
+            UUID epicId,
+            java.time.LocalDate dueFrom,
+            java.time.LocalDate dueTo,
             int page,
             int size,
             String sortField,
@@ -198,6 +206,7 @@ public class IssueService {
         if (unassigned && assigneeId != null) {
             throw new InvalidInputException("assigneeId", "Choose a member or unassigned issues, not both.");
         }
+        if (dueFrom != null && dueTo != null && dueFrom.isAfter(dueTo)) throw new InvalidInputException("dueTo", "Due date end must be on or after start.");
         Sort.Direction sortDirection;
         try {
             sortDirection = Sort.Direction.fromString(direction);
@@ -214,7 +223,8 @@ public class IssueService {
             default -> throw new InvalidInputException("sort", "Unsupported issue sort field.");
         };
         Page<IssueEntity> results = issueRepository.search(projectId, status, priority, type, assigneeId,
-                unassigned, StringUtils.hasText(search) ? "%" + search.trim().toLowerCase() + "%" : "%", includeArchived,
+                unassigned, StringUtils.hasText(search) ? "%" + search.trim().toLowerCase() + "%" : "%",
+                sprintId, epicId, dueFrom, dueTo, includeArchived,
                 PageRequest.of(page, size, Sort.by(sortDirection, property)));
         return new IssuePageResponse(results.getContent().stream().map(IssueService::response).toList(),
                 results.getNumber(), results.getSize(), results.getTotalElements(), results.getTotalPages());
@@ -253,7 +263,7 @@ public class IssueService {
                 && issue.getStatus() != request.status()) {
             throw new SprintConflictException("Workflow status cannot change for an issue in a closed sprint.");
         }
-        validateTransition(issue.getStatus(), request.status());
+        requireTransition(issue.getProject().getId(), issue.getStatus(), request.status());
         UserEntity actor = userRepository.findById(actorId).orElseThrow(UserNotFoundException::new);
         recordChange(issue, actor, "title", issue.getTitle(), request.title().trim());
         recordChange(issue, actor, "description", issue.getDescription(), normalizeDescription(request.description()));
@@ -285,7 +295,7 @@ public class IssueService {
         if (issue.getSprint() != null && issue.getSprint().getState() == SprintState.CLOSED) {
             throw new SprintConflictException("Issues in closed sprints cannot be moved on the board.");
         }
-        if (issue.getStatus() != request.status()) validateTransition(issue.getStatus(), request.status());
+        if (issue.getStatus() != request.status()) requireTransition(project.getId(), issue.getStatus(), request.status());
 
         List<IssueEntity> target = new ArrayList<>(issueRepository
                 .findByProject_IdAndStatusAndArchivedAtIsNullOrderByRankValueAscIdAsc(project.getId(), request.status()));
@@ -432,15 +442,9 @@ public class IssueService {
         }
     }
 
-    private static void validateTransition(IssueStatus from, IssueStatus to) {
+    private void requireTransition(UUID projectId, IssueStatus from, IssueStatus to) {
         if (from == to) return;
-        boolean allowed = switch (from) {
-            case TODO -> to == IssueStatus.IN_PROGRESS;
-            case IN_PROGRESS -> to == IssueStatus.TODO || to == IssueStatus.IN_REVIEW;
-            case IN_REVIEW -> to == IssueStatus.IN_PROGRESS || to == IssueStatus.DONE;
-            case DONE -> to == IssueStatus.IN_PROGRESS;
-        };
-        if (!allowed) throw new InvalidStatusTransitionException();
+        workflowService.requireAllowed(projectId, from, to);
     }
 
     private static String normalizeDescription(String description) {

@@ -104,7 +104,7 @@ Run `./mvnw.cmd test` from `backend` (Docker is required for the PostgreSQL Test
 8. Jira workflow foundation: issue keys, persistent ranking, and Kanban board (implemented; backend tests pass, browser interaction verification remains).
 9. Phase 2: backlog and Scrum sprint lifecycle (implemented; PostgreSQL integration rerun and browser verification remain).
 10. Phase 3: epics, issue hierarchy, and releases (implemented; PostgreSQL integration rerun and browser verification remain; see [docs/phase-3-design.md](docs/phase-3-design.md)).
-11. Phase 4: workflow customization and saved filters.
+11. Phase 4: workflow customization and saved filters (implemented; backend compile and non-container unit tests pass; PostgreSQL integration and browser checks remain; see [docs/phase-4-design.md](docs/phase-4-design.md)).
 12. Phase 5: reports and dashboards.
 13. Phase 6: automation and integrations.
 14. CI and deployment hardening.
