@@ -6,15 +6,9 @@ import {
   type FormEvent,
 } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  ApiError,
-  createProject,
-  listProjects,
-  updateProject,
-  updateProjectStatus,
-  type Project,
-  type ProjectStatus,
-} from "../auth/api";
+import { ApiError } from "../api/client";
+import { createProject, listProjects, updateProject, updateProjectStatus } from "../api/projects";
+import { type Project, type ProjectStatus } from "../api/types";
 import { PageHeader } from "../components/ui/PageHeader";
 import {
   EmptyState,

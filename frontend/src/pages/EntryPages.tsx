@@ -1,6 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ApiError, register, requestRegistrationCode } from "../auth/api";
+import { ApiError } from "../api/client";
+import { register, requestRegistrationCode } from "../api/auth";
 import { useAuth } from "../auth/useAuth";
 
 function EntryLayout({ children }: { children: ReactNode }) {

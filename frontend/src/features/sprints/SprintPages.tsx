@@ -1,28 +1,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
-import {
-  addIssuesToSprint,
-  ApiError,
-  assignIssueToSprint,
-  completeSprint,
-  createIssue,
-  createSprint,
-  listBacklog,
-  listProjectSprints,
-  listSprintIssuesAll,
-  removeIssuesFromSprint,
-  startSprint,
-  updateSprint,
-  type Issue,
-  type IssueInput,
-  type IssuePage,
-  type IssuePriority,
-  type IssueType,
-  type Project,
-  type Sprint,
-  type SprintInput,
-  type WorkspaceMember,
-} from "../../auth/api";
+import { addIssuesToSprint, assignIssueToSprint, completeSprint, createSprint, listBacklog, listProjectSprints, listSprintIssuesAll, removeIssuesFromSprint, startSprint, updateSprint } from "../../api/sprints";
+import { ApiError } from "../../api/client";
+import { createIssue } from "../../api/issues";
+import { type Issue, type IssueInput, type IssuePage, type IssuePriority, type IssueType, type Project, type Sprint, type SprintInput, type WorkspaceMember } from "../../api/types";
 import { ErrorState, LoadingState } from "../../components/ui/StateMessage";
 
 const emptySprint: SprintInput = {

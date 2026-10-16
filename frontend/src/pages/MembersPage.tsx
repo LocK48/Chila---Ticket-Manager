@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  ApiError,
-  addWorkspaceMember,
-  listWorkspaceMembers,
-  removeWorkspaceMember,
-  updateWorkspaceMemberRole,
-  type MembershipRole,
-  type WorkspaceMember,
-} from "../auth/api";
+import { ApiError } from "../api/client";
+import { addWorkspaceMember, listWorkspaceMembers, removeWorkspaceMember, updateWorkspaceMemberRole } from "../api/workspaces";
+import { type MembershipRole, type WorkspaceMember } from "../api/types";
 import { PageHeader } from "../components/ui/PageHeader";
 import {
   EmptyState,

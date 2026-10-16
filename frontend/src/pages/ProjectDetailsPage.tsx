@@ -6,27 +6,13 @@ import {
   useOutletContext,
   useParams,
 } from "react-router-dom";
-import {
-  ApiError,
-  getProjectDashboard,
-  getWorkflow,
-  listAutomationRules,
-  listAutomationExecutions,
-  createAutomationRule,
-  updateAutomationRule,
-  deleteAutomationRule,
-  listProjects,
-  listWorkspaceMembers,
-  updateProject,
-  updateWorkflow,
-  type Project,
-  type WorkspaceMember,
-  type IssueStatus,
-  type WorkflowTransition,
-  type ProjectDashboard,
-  type AutomationRule,
-  type AutomationExecution,
-} from "../auth/api";
+import { ApiError } from "../api/client";
+import { getProjectDashboard } from "../api/reports";
+import { getWorkflow, updateWorkflow } from "../api/filters";
+import { listAutomationRules, listAutomationExecutions, createAutomationRule, updateAutomationRule, deleteAutomationRule } from "../api/automation";
+import { listProjects, updateProject } from "../api/projects";
+import { listWorkspaceMembers } from "../api/workspaces";
+import { type Project, type WorkspaceMember, type IssueStatus, type WorkflowTransition, type ProjectDashboard, type AutomationRule, type AutomationExecution } from "../api/types";
 import { IssuesPanel } from "../features/issues/IssuesPanel";
 import { EpicsPage, ReleasesPage } from "../features/hierarchy/HierarchyPages";
 import { KanbanBoard } from "../features/issues/KanbanBoard";

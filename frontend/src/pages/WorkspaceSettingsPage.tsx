@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ApiError, deleteWorkspace, updateWorkspace } from "../auth/api";
+import { ApiError } from "../api/client";
+import { deleteWorkspace, updateWorkspace } from "../api/workspaces";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useAppLayout } from "../layouts/app-layout-context";
 import { useConfirm } from "../components/ui/ConfirmProvider";

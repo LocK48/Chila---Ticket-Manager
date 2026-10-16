@@ -1,5 +1,5 @@
 import { useOutletContext } from "react-router-dom";
-import type { Workspace } from "../auth/api";
+import type { Workspace } from "../api/types";
 
 export type AppLayoutContext = {
   workspaces: Workspace[];

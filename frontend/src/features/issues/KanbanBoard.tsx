@@ -6,21 +6,10 @@ import {
   type FormEvent,
 } from "react";
 import { Link, useParams } from "react-router-dom";
-import {
-  ApiError,
-  assignIssueToSprint,
-  createIssue,
-  listIssues,
-  listSprintIssues,
-  moveIssue,
-  type Issue,
-  type IssueInput,
-  type IssuePage,
-  type IssuePriority,
-  type IssueStatus,
-  type IssueType,
-  type WorkspaceMember,
-} from "../../auth/api";
+import { ApiError } from "../../api/client";
+import { assignIssueToSprint, listSprintIssues } from "../../api/sprints";
+import { createIssue, listIssues, moveIssue } from "../../api/issues";
+import { type Issue, type IssueInput, type IssuePage, type IssuePriority, type IssueStatus, type IssueType, type WorkspaceMember } from "../../api/types";
 import { ErrorState, LoadingState } from "../../components/ui/StateMessage";
 
 const statuses: IssueStatus[] = ["TODO", "IN_PROGRESS", "IN_REVIEW", "DONE"];

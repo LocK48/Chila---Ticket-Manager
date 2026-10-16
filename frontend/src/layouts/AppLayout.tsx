@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, NavLink, Outlet, useMatch, useNavigate } from "react-router-dom";
-import {
-  ApiError,
-  createWorkspace,
-  listWorkspaces,
-  type Workspace,
-} from "../auth/api";
+import { ApiError } from "../api/client";
+import { createWorkspace, listWorkspaces } from "../api/workspaces";
+import { type Workspace } from "../api/types";
 import { useAuth } from "../auth/useAuth";
 import { NotificationsPanel } from "../features/notifications/NotificationsPanel";
 import type { AppLayoutContext } from "./app-layout-context";

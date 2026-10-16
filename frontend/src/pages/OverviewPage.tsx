@@ -1,13 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  ApiError,
-  listIssues,
-  listProjects,
-  listWorkspaceMembers,
-  type Issue,
-  type Project,
-} from "../auth/api";
+import { ApiError } from "../api/client";
+import { listIssues } from "../api/issues";
+import { listProjects } from "../api/projects";
+import { listWorkspaceMembers } from "../api/workspaces";
+import { type Issue, type Project } from "../api/types";
 import { PageHeader } from "../components/ui/PageHeader";
 import {
   EmptyState,

@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  ApiError,
-  listProjects,
-  listWorkspaceMembers,
-  type Project,
-  type WorkspaceMember,
-} from "../auth/api";
+import { ApiError } from "../api/client";
+import { listProjects } from "../api/projects";
+import { listWorkspaceMembers } from "../api/workspaces";
+import { type Project, type WorkspaceMember } from "../api/types";
 import { IssuesPanel } from "../features/issues/IssuesPanel";
 import { PageHeader } from "../components/ui/PageHeader";
 import {

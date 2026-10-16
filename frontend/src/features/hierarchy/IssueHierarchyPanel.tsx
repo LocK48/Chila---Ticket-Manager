@@ -1,23 +1,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import {
-  addIssueLink,
-  ApiError,
-  assignIssueEpic,
-  assignIssueParent,
-  assignIssueRelease,
-  getIssueReference,
-  getIssueRelationships,
-  listProjectEpics,
-  listProjectReleases,
-  removeIssueLink,
-  type Epic,
-  type Issue,
-  type IssueLinkType,
-  type IssueRelationships,
-  type Project,
-  type ProjectRelease,
-} from "../../auth/api";
+import { addIssueLink, assignIssueEpic, assignIssueParent, assignIssueRelease, getIssueRelationships, listProjectEpics, listProjectReleases, removeIssueLink } from "../../api/hierarchy";
+import { ApiError } from "../../api/client";
+import { getIssueReference } from "../../api/issues";
+import { type Epic, type Issue, type IssueLinkType, type IssueRelationships, type Project, type ProjectRelease } from "../../api/types";
 
 export function IssueHierarchyPanel({
   workspaceId,

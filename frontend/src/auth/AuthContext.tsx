@@ -5,14 +5,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import {
-  currentUser,
-  initializeSession,
-  login as loginRequest,
-  logout as logoutRequest,
-  updateDisplayName,
-  type User,
-} from "./api";
+import { currentUser, initializeSession, login as loginRequest, logout as logoutRequest, updateDisplayName } from "../api/auth";
+import { type User } from "../api/types";
 import { AuthContext, type AuthContextValue } from "./auth-context";
 
 export function AuthProvider({ children }: { children: ReactNode }) {

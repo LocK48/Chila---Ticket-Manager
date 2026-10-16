@@ -146,6 +146,8 @@ File mẫu được lưu tại [backend/.env.example](../backend/.env.example). 
 | `POSTGRESQL_DB_URL` | URL Neon/PostgreSQL tùy chọn. |
 | `SPRING_DATASOURCE_URL` | JDBC URL tường minh; được ưu tiên hơn `POSTGRESQL_DB_URL`. |
 | `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` | Tùy chọn ghi đè thông tin đăng nhập database. |
+| `DB_POOL_MIN_IDLE`, `DB_POOL_MAX_SIZE` | Số kết nối idle tối thiểu và tổng kết nối tối đa của Hikari; mặc định `0` và `5`. |
+| `DB_POOL_IDLE_TIMEOUT`, `DB_POOL_MAX_LIFETIME` | Thời gian idle và tuổi thọ tối đa của kết nối Hikari, tính bằng mili giây; mặc định `60000` và `240000`. |
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT` | Cấu hình PostgreSQL Compose local và giá trị kết nối dự phòng của backend. |
 | `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT` | Máy chủ và cổng SMTP (mặc định cổng `587`). |
 | `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD` | Thông tin xác thực SMTP. |
@@ -156,6 +158,8 @@ File mẫu được lưu tại [backend/.env.example](../backend/.env.example). 
 | `VITE_API_BASE_URL` | URL gốc frontend dùng khi backend được host riêng. |
 
 Cần cấu hình SMTP hoạt động để gửi email đăng ký và đổi mật khẩu. Nếu không có mail server, yêu cầu gửi OTP sẽ trả lỗi gửi email và không thể hoàn tất các thao tác tài khoản đó.
+
+Pool Hikari dùng số kết nối idle tối thiểu bằng 0, đóng kết nối idle sau một phút và đặt tuổi thọ kết nối tối đa bốn phút. Cấu hình này tránh giữ các kết nối idle đã cũ khi database dạng serverless tạm ngưng compute. Compute Neon có thể mất thêm thời gian để phản hồi request đầu tiên sau khi idle; các request tiếp theo sẽ dùng kết nối mới. Khởi động lại backend sau khi thay đổi cấu hình database hoặc connection pool.
 
 ## Các trang trong ứng dụng
 

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useAuth } from "../auth/useAuth";
-import { changePassword, requestPasswordChangeCode } from "../auth/api";
+import { changePassword, requestPasswordChangeCode } from "../api/auth";
 
 export function ProfilePage() {
   const { user, updateName } = useAuth();

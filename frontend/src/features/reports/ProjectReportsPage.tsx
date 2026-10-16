@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import {
-  ApiError,
-  getSprintReport,
-  listProjectSprints,
-  type Sprint,
-  type SprintReport,
-} from "../../auth/api";
+import { ApiError } from "../../api/client";
+import { getSprintReport } from "../../api/reports";
+import { listProjectSprints } from "../../api/sprints";
+import { type Sprint, type SprintReport } from "../../api/types";
 
 export function ProjectReportsPage() {
   const { workspaceId = "", projectId = "" } = useParams();

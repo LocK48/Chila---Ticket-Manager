@@ -146,6 +146,8 @@ The checked-in template is [backend/.env.example](backend/.env.example). The rea
 | `POSTGRESQL_DB_URL` | Optional Neon/PostgreSQL connection URL. |
 | `SPRING_DATASOURCE_URL` | Explicit JDBC URL; overrides `POSTGRESQL_DB_URL`. |
 | `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` | Optional explicit database credential overrides. |
+| `DB_POOL_MIN_IDLE`, `DB_POOL_MAX_SIZE` | Hikari minimum idle and maximum connections; defaults are `0` and `5`. |
+| `DB_POOL_IDLE_TIMEOUT`, `DB_POOL_MAX_LIFETIME` | Hikari idle timeout and connection lifetime in milliseconds; defaults are `60000` and `240000`. |
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT` | Local Compose database settings and backend fallback connection values. |
 | `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT` | SMTP host and port (port defaults to `587`). |
 | `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD` | SMTP authentication credentials. |
@@ -156,6 +158,8 @@ The checked-in template is [backend/.env.example](backend/.env.example). The rea
 | `VITE_API_BASE_URL` | Optional frontend API base URL for a separately hosted backend. |
 
 SMTP must be configured for real signup and password-change emails. Without a working mail server, OTP requests return an email-delivery error and those account actions cannot complete.
+
+The Hikari pool uses a zero minimum idle count and retires idle connections after one minute, with a four-minute maximum connection lifetime. This avoids retaining stale idle client connections when a serverless database suspends its compute. A cold Neon compute may take longer to answer the first request after inactivity; subsequent requests should reuse fresh connections. Restart the backend after changing pool or database settings.
 
 ## Application routes
 

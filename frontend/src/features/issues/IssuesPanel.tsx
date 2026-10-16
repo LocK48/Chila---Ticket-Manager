@@ -1,27 +1,11 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
-import {
-  ApiError,
-  archiveIssue,
-  createIssue,
-  listIssues,
-  restoreIssue,
-  updateIssue,
-  createSavedFilter,
-  deleteSavedFilter,
-  listSavedFilters,
-  listProjectSprints,
-  listProjectEpics,
-  getWorkflow,
-  type Issue,
-  type IssueInput,
-  type IssuePriority,
-  type IssueStatus,
-  type IssueType,
-  type WorkspaceMember,
-  type SavedFilter,
-  type SavedFilterVisibility,
-} from "../../auth/api";
+import { ApiError } from "../../api/client";
+import { archiveIssue, createIssue, listIssues, restoreIssue, updateIssue } from "../../api/issues";
+import { createSavedFilter, deleteSavedFilter, listSavedFilters, getWorkflow } from "../../api/filters";
+import { listProjectSprints } from "../../api/sprints";
+import { listProjectEpics } from "../../api/hierarchy";
+import { type Issue, type IssueInput, type IssuePriority, type IssueStatus, type IssueType, type WorkspaceMember, type SavedFilter, type SavedFilterVisibility } from "../../api/types";
 import { IssueCollaboration } from "./IssueCollaboration";
 import { useAuth } from "../../auth/useAuth";
 import { useConfirm } from "../../components/ui/ConfirmProvider";

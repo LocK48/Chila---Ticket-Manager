@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  ApiError,
-  listNotifications,
-  markNotificationRead,
-  type Notification,
-} from "../../auth/api";
+import { ApiError } from "../../api/client";
+import { listNotifications, markNotificationRead } from "../../api/notifications";
+import { type Notification } from "../../api/types";
 
 export function NotificationsPanel() {
   const [open, setOpen] = useState(false);

@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import {
-  addIssueComment,
-  ApiError,
-  listIssueActivities,
-  listIssueComments,
-  type IssueActivity,
-  type IssueComment,
-} from "../../auth/api";
+import { addIssueComment, listIssueActivities, listIssueComments } from "../../api/collaboration";
+import { ApiError } from "../../api/client";
+import { type IssueActivity, type IssueComment } from "../../api/types";
 
 export function IssueCollaboration({
   issueId,

@@ -1,16 +1,10 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
-import {
-  ApiError,
-  getIssueReference,
-  listProjects,
-  listWorkspaceMembers,
-  updateIssue,
-  type Issue,
-  type IssueInput,
-  type Project,
-  type WorkspaceMember,
-} from "../auth/api";
+import { ApiError } from "../api/client";
+import { getIssueReference, updateIssue } from "../api/issues";
+import { listProjects } from "../api/projects";
+import { listWorkspaceMembers } from "../api/workspaces";
+import { type Issue, type IssueInput, type Project, type WorkspaceMember } from "../api/types";
 import { IssueCollaboration } from "../features/issues/IssueCollaboration";
 import { IssueHierarchyPanel } from "../features/hierarchy/IssueHierarchyPanel";
 import { PageHeader } from "../components/ui/PageHeader";

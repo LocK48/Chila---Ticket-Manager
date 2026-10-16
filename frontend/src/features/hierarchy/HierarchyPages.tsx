@@ -1,24 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import {
-  ApiError,
-  createEpic,
-  createRelease,
-  listDueIssues,
-  listEpicIssues,
-  listProjectEpics,
-  listProjectReleases,
-  updateEpic,
-  updateRelease,
-  type Epic,
-  type EpicInput,
-  type IssuePage,
-  type IssueStatus,
-  type Project,
-  type ProjectRelease,
-  type ReleaseInput,
-  type ReleaseState,
-} from "../../auth/api";
+import { ApiError } from "../../api/client";
+import { createEpic, createRelease, listDueIssues, listEpicIssues, listProjectEpics, listProjectReleases, updateEpic, updateRelease } from "../../api/hierarchy";
+import { type Epic, type EpicInput, type IssuePage, type IssueStatus, type Project, type ProjectRelease, type ReleaseInput, type ReleaseState } from "../../api/types";
 
 export function EpicsPage({
   project,
