@@ -71,18 +71,37 @@ export type SprintReport = {
   unfinishedIssues: number | null;
   completionPercentage: number | null;
   burndown: { date: string; scopeIssues: number; remainingIssues: number }[];
-  completionIssues: { issueId: string; issueKey: string; issueTitle: string; issueStatus: IssueStatus }[];
+  completionIssues: {
+    issueId: string;
+    issueKey: string;
+    issueTitle: string;
+    issueStatus: IssueStatus;
+  }[];
 };
 export type IssuePriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 export type AutomationAction = "NOTIFY_REPORTER" | "NOTIFY_ASSIGNEE";
 export type AutomationRule = {
-  id: string; projectId: string; name: string; enabled: boolean; targetStatus: IssueStatus;
-  action: AutomationAction; createdAt: string; updatedAt: string;
+  id: string;
+  projectId: string;
+  name: string;
+  enabled: boolean;
+  targetStatus: IssueStatus;
+  action: AutomationAction;
+  createdAt: string;
+  updatedAt: string;
 };
-export type AutomationRuleInput = Pick<AutomationRule, "name" | "enabled" | "targetStatus" | "action">;
+export type AutomationRuleInput = Pick<
+  AutomationRule,
+  "name" | "enabled" | "targetStatus" | "action"
+>;
 export type AutomationExecution = {
-  id: string; ruleId: string | null; ruleName: string; issueKey: string;
-  outcome: "SUCCEEDED" | "SKIPPED"; detail: string; executedAt: string;
+  id: string;
+  ruleId: string | null;
+  ruleName: string;
+  issueKey: string;
+  outcome: "SUCCEEDED" | "SKIPPED";
+  detail: string;
+  executedAt: string;
 };
 export type Issue = {
   id: string;
@@ -224,14 +243,33 @@ export type IssueFilters = {
 };
 export type SavedFilterVisibility = "PRIVATE" | "WORKSPACE";
 export type SavedFilter = {
-  id: string; projectId: string; creatorId: string; name: string; visibility: SavedFilterVisibility;
-  status: IssueStatus | null; priority: IssuePriority | null; type: IssueType | null;
-  assigneeId: string | null; unassigned: boolean; sprintId: string | null; epicId: string | null;
-  dueFrom: string | null; dueTo: string | null; search: string | null; createdAt: string; updatedAt: string;
+  id: string;
+  projectId: string;
+  creatorId: string;
+  name: string;
+  visibility: SavedFilterVisibility;
+  status: IssueStatus | null;
+  priority: IssuePriority | null;
+  type: IssueType | null;
+  assigneeId: string | null;
+  unassigned: boolean;
+  sprintId: string | null;
+  epicId: string | null;
+  dueFrom: string | null;
+  dueTo: string | null;
+  search: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
-export type SavedFilterInput = Omit<SavedFilter, "id" | "projectId" | "creatorId" | "createdAt" | "updatedAt">;
+export type SavedFilterInput = Omit<
+  SavedFilter,
+  "id" | "projectId" | "creatorId" | "createdAt" | "updatedAt"
+>;
 export type WorkflowTransition = { from: IssueStatus; to: IssueStatus };
-export type Workflow = { statuses: IssueStatus[]; transitions: WorkflowTransition[] };
+export type Workflow = {
+  statuses: IssueStatus[];
+  transitions: WorkflowTransition[];
+};
 export type SprintState = "FUTURE" | "ACTIVE" | "CLOSED";
 export type Sprint = {
   id: string;
@@ -255,6 +293,7 @@ export type RegistrationInput = {
   email: string;
   password: string;
   displayName: string;
+  verificationCode: string;
 };
 
 export type ApiErrorBody = {
@@ -335,6 +374,27 @@ export async function register(input: RegistrationInput): Promise<User> {
   return request<User>("/api/v1/auth/register", {
     method: "POST",
     body: JSON.stringify(input),
+  });
+}
+
+export async function requestRegistrationCode(email: string): Promise<void> {
+  return request<void>("/api/v1/auth/registration-otp", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function requestPasswordChangeCode(): Promise<void> {
+  return request<void>("/api/v1/users/me/password-otp", { method: "POST" });
+}
+
+export async function changePassword(
+  verificationCode: string,
+  newPassword: string,
+): Promise<void> {
+  return request<void>("/api/v1/users/me/password", {
+    method: "PUT",
+    body: JSON.stringify({ verificationCode, newPassword }),
   });
 }
 
@@ -493,38 +553,96 @@ export async function listIssues(
     `/api/v1/projects/${encodeURIComponent(projectId)}/issues?${query}`,
   );
 }
-export async function listSavedFilters(projectId: string): Promise<SavedFilter[]> {
-  return request<SavedFilter[]>(`/api/v1/projects/${encodeURIComponent(projectId)}/filters`);
+export async function listSavedFilters(
+  projectId: string,
+): Promise<SavedFilter[]> {
+  return request<SavedFilter[]>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/filters`,
+  );
 }
-export async function createSavedFilter(projectId: string, input: SavedFilterInput): Promise<SavedFilter> {
-  return request<SavedFilter>(`/api/v1/projects/${encodeURIComponent(projectId)}/filters`, { method: "POST", body: JSON.stringify(input) });
+export async function createSavedFilter(
+  projectId: string,
+  input: SavedFilterInput,
+): Promise<SavedFilter> {
+  return request<SavedFilter>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/filters`,
+    { method: "POST", body: JSON.stringify(input) },
+  );
 }
-export async function updateSavedFilter(projectId: string, filterId: string, input: SavedFilterInput): Promise<SavedFilter> {
-  return request<SavedFilter>(`/api/v1/projects/${encodeURIComponent(projectId)}/filters/${encodeURIComponent(filterId)}`, { method: "PUT", body: JSON.stringify(input) });
+export async function updateSavedFilter(
+  projectId: string,
+  filterId: string,
+  input: SavedFilterInput,
+): Promise<SavedFilter> {
+  return request<SavedFilter>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/filters/${encodeURIComponent(filterId)}`,
+    { method: "PUT", body: JSON.stringify(input) },
+  );
 }
-export async function deleteSavedFilter(projectId: string, filterId: string): Promise<void> {
-  return request<void>(`/api/v1/projects/${encodeURIComponent(projectId)}/filters/${encodeURIComponent(filterId)}`, { method: "DELETE" });
+export async function deleteSavedFilter(
+  projectId: string,
+  filterId: string,
+): Promise<void> {
+  return request<void>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/filters/${encodeURIComponent(filterId)}`,
+    { method: "DELETE" },
+  );
 }
 export async function getWorkflow(projectId: string): Promise<Workflow> {
-  return request<Workflow>(`/api/v1/projects/${encodeURIComponent(projectId)}/workflow`);
+  return request<Workflow>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/workflow`,
+  );
 }
-export async function updateWorkflow(projectId: string, transitions: WorkflowTransition[]): Promise<Workflow> {
-  return request<Workflow>(`/api/v1/projects/${encodeURIComponent(projectId)}/workflow/transitions`, { method: "PUT", body: JSON.stringify(transitions) });
+export async function updateWorkflow(
+  projectId: string,
+  transitions: WorkflowTransition[],
+): Promise<Workflow> {
+  return request<Workflow>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/workflow/transitions`,
+    { method: "PUT", body: JSON.stringify(transitions) },
+  );
 }
-export async function listAutomationRules(projectId: string): Promise<AutomationRule[]> {
-  return request<AutomationRule[]>(`/api/v1/projects/${encodeURIComponent(projectId)}/automation/rules`);
+export async function listAutomationRules(
+  projectId: string,
+): Promise<AutomationRule[]> {
+  return request<AutomationRule[]>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/automation/rules`,
+  );
 }
-export async function createAutomationRule(projectId: string, input: AutomationRuleInput): Promise<AutomationRule> {
-  return request<AutomationRule>(`/api/v1/projects/${encodeURIComponent(projectId)}/automation/rules`, { method: "POST", body: JSON.stringify(input) });
+export async function createAutomationRule(
+  projectId: string,
+  input: AutomationRuleInput,
+): Promise<AutomationRule> {
+  return request<AutomationRule>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/automation/rules`,
+    { method: "POST", body: JSON.stringify(input) },
+  );
 }
-export async function updateAutomationRule(projectId: string, ruleId: string, input: AutomationRuleInput): Promise<AutomationRule> {
-  return request<AutomationRule>(`/api/v1/projects/${encodeURIComponent(projectId)}/automation/rules/${encodeURIComponent(ruleId)}`, { method: "PUT", body: JSON.stringify(input) });
+export async function updateAutomationRule(
+  projectId: string,
+  ruleId: string,
+  input: AutomationRuleInput,
+): Promise<AutomationRule> {
+  return request<AutomationRule>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/automation/rules/${encodeURIComponent(ruleId)}`,
+    { method: "PUT", body: JSON.stringify(input) },
+  );
 }
-export async function deleteAutomationRule(projectId: string, ruleId: string): Promise<void> {
-  return request<void>(`/api/v1/projects/${encodeURIComponent(projectId)}/automation/rules/${encodeURIComponent(ruleId)}`, { method: "DELETE" });
+export async function deleteAutomationRule(
+  projectId: string,
+  ruleId: string,
+): Promise<void> {
+  return request<void>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/automation/rules/${encodeURIComponent(ruleId)}`,
+    { method: "DELETE" },
+  );
 }
-export async function listAutomationExecutions(projectId: string): Promise<AutomationExecution[]> {
-  return request<AutomationExecution[]>(`/api/v1/projects/${encodeURIComponent(projectId)}/automation/executions`);
+export async function listAutomationExecutions(
+  projectId: string,
+): Promise<AutomationExecution[]> {
+  return request<AutomationExecution[]>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/automation/executions`,
+  );
 }
 export async function listBacklog(
   projectId: string,
@@ -543,11 +661,20 @@ export async function listProjectSprints(projectId: string): Promise<Sprint[]> {
     `/api/v1/projects/${encodeURIComponent(projectId)}/sprints`,
   );
 }
-export async function getProjectDashboard(projectId: string): Promise<ProjectDashboard> {
-  return request<ProjectDashboard>(`/api/v1/projects/${encodeURIComponent(projectId)}/reports`);
+export async function getProjectDashboard(
+  projectId: string,
+): Promise<ProjectDashboard> {
+  return request<ProjectDashboard>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/reports`,
+  );
 }
-export async function getSprintReport(projectId: string, sprintId: string): Promise<SprintReport> {
-  return request<SprintReport>(`/api/v1/projects/${encodeURIComponent(projectId)}/reports/sprints/${encodeURIComponent(sprintId)}`);
+export async function getSprintReport(
+  projectId: string,
+  sprintId: string,
+): Promise<SprintReport> {
+  return request<SprintReport>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/reports/sprints/${encodeURIComponent(sprintId)}`,
+  );
 }
 export async function createSprint(
   projectId: string,

@@ -10,6 +10,17 @@ spring:
     url: ${SPRING_DATASOURCE_URL:${POSTGRESQL_DB_URL:jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:chila}}}
     username: ${SPRING_DATASOURCE_USERNAME:${POSTGRES_USER:${POSTGRESQL_USER:chila}}}
     password: ${SPRING_DATASOURCE_PASSWORD:${POSTGRES_PASSWORD:${POSTGRESQL_PASSWORD:change-me-local-only}}}
+  mail:
+    host: ${SPRING_MAIL_HOST:}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${SPRING_MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${SPRING_MAIL_STARTTLS:true}
   jpa:
     open-in-view: false
     hibernate:
@@ -38,3 +49,5 @@ chila:
     cookie-secure: ${CHILA_AUTH_COOKIE_SECURE:false}
     jwt-secret: ${CHILA_JWT_SECRET}
     jwt-issuer: ${CHILA_JWT_ISSUER:chila-local}
+  email:
+    from: ${CHILA_EMAIL_FROM:}

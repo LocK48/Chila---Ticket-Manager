@@ -41,6 +41,8 @@ docker compose ps
 
 The sample `.env` values are for local development only. Before starting the backend, replace `CHILA_JWT_SECRET` in `.env` with a private Base64-encoded secret of at least 32 bytes (for example, generate one with `openssl rand -base64 32`). Never commit `.env` or use a development key in production. The backend imports the root `.env` file when run from `backend`; Compose reads the same database settings. Flyway applies migrations automatically when the backend starts.
 
+Email verification codes require SMTP settings in `.env`: `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, and `CHILA_EMAIL_FROM`. Signup and password changes use a six-digit code that expires after 10 minutes; a new code can be requested after 60 seconds. See `backend/.env.example` for variable names. Without SMTP, email-code requests return a service-unavailable error and account registration/password changes cannot proceed.
+
 If another PostgreSQL server already uses port `5432`, set `POSTGRES_PORT=5433` in `.env` so the Compose database and backend use port `5433` without changing the other server.
 
 To use Neon instead of local Compose storage, set `POSTGRESQL_DB_URL` in `.env` to the Neon PostgreSQL connection URL. The backend accepts Neon’s `postgresql://...` URL or a `jdbc:postgresql://...` URL; credentials embedded in the URL are used unless `SPRING_DATASOURCE_USERNAME` or `SPRING_DATASOURCE_PASSWORD` overrides them. `SPRING_DATASOURCE_URL`, when set, has highest priority. Keep the URL private and restart the backend after changing it. The local Compose database remains available as the fallback when `POSTGRESQL_DB_URL` is unset.
@@ -58,7 +60,7 @@ Check `http://localhost:8080/api/v1/health`. A successful response looks like:
 {"status":"UP","application":"Chila Backend"}
 ```
 
-To register or log in through the API, first call `GET /api/v1/auth/csrf` and keep the returned `XSRF-TOKEN` cookie. Send it and its value in the `X-XSRF-TOKEN` header on `POST /api/v1/auth/register` or `POST /api/v1/auth/login`. Login returns a safe user object and sets a short-lived, HttpOnly access cookie. Re-fetch the CSRF cookie after login and logout before another state-changing request. Use `GET /api/v1/users/me` to check the session, `PATCH /api/v1/users/me` to update the display name, and `POST /api/v1/auth/logout` to clear the browser cookie. Logout does not revoke a copied JWT; it expires after 15 minutes. The full contract is in [docs/phase-b-design.md](docs/phase-b-design.md).
+To register through the API, request a code with `POST /api/v1/auth/registration-otp`, then include `verificationCode` with the code in `POST /api/v1/auth/register`. For state-changing requests, first call `GET /api/v1/auth/csrf` and send the returned cookie and value in the `X-XSRF-TOKEN` header. Login returns a safe user object and sets a short-lived, HttpOnly access cookie. Signed-in users can request a password-change code with `POST /api/v1/users/me/password-otp` and submit it with `newPassword` to `PUT /api/v1/users/me/password`. Use `GET /api/v1/users/me` to check the session, `PATCH /api/v1/users/me` to update the display name, and `POST /api/v1/auth/logout` to clear the browser cookie. Logout does not revoke a copied JWT; it expires after 15 minutes. The full contract is in [docs/phase-b-design.md](docs/phase-b-design.md).
 
 In another terminal, start the frontend:
 

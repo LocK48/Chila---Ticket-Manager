@@ -33,6 +33,7 @@ import { WorkspaceRedirect } from "./pages/WorkspaceRedirect";
 import { WorkspaceRoute } from "./pages/WorkspaceRoute";
 import { WorkspaceSettingsPage } from "./pages/WorkspaceSettingsPage";
 import { ProjectReportsPage } from "./features/reports/ProjectReportsPage";
+import { ConfirmProvider } from "./components/ui/ConfirmProvider";
 import "./App.css";
 
 function RequireAuth() {
@@ -97,6 +98,7 @@ function AppRoutes() {
           <Route index element={<WorkspaceRedirect />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="workspaces/:workspaceId" element={<WorkspaceRoute />}>
+            <Route path="profile" element={<ProfilePage />} />
             <Route path="overview" element={<OverviewPage />} />
             <Route path="projects" element={<ProjectsPage />} />
             <Route path="projects/:projectId" element={<ProjectDetailsPage />}>
@@ -134,7 +136,9 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <ConfirmProvider>
+          <AppRoutes />
+        </ConfirmProvider>
       </AuthProvider>
     </BrowserRouter>
   );

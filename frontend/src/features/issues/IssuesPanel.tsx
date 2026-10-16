@@ -24,6 +24,7 @@ import {
 } from "../../auth/api";
 import { IssueCollaboration } from "./IssueCollaboration";
 import { useAuth } from "../../auth/useAuth";
+import { useConfirm } from "../../components/ui/ConfirmProvider";
 
 const statuses: IssueStatus[] = ["TODO", "IN_PROGRESS", "IN_REVIEW", "DONE"];
 const priorities: IssuePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
@@ -54,6 +55,7 @@ export function IssuesPanel({
 }) {
   const { workspaceId = "" } = useParams();
   const { user } = useAuth();
+  const { prompt, choose } = useConfirm();
   const [issues, setIssues] = useState<Issue[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -188,13 +190,27 @@ export function IssuesPanel({
     setDueTo(filter.dueTo ?? "");
   }
   async function saveCurrentFilter() {
-    const name = window.prompt("Name this filter")?.trim();
+    const name = (
+      await prompt({
+        title: "Save issue filter",
+        message: "Give this filter a name so you can quickly reuse it.",
+        inputLabel: "Filter name",
+        placeholder: "e.g. My open issues",
+        confirmLabel: "Continue",
+      })
+    )?.trim();
     if (!name) return;
-    const visibility: SavedFilterVisibility = window.confirm(
-      "Share this filter with workspace members?",
-    )
-      ? "WORKSPACE"
-      : "PRIVATE";
+    const visibilityChoice = await choose({
+      title: "Who can use this filter?",
+      message:
+        "Choose whether to keep this filter private or share it with the workspace.",
+      choices: [
+        { label: "Keep private", value: "PRIVATE" },
+        { label: "Share with workspace", value: "WORKSPACE", primary: true },
+      ],
+    });
+    if (!visibilityChoice) return;
+    const visibility = visibilityChoice as SavedFilterVisibility;
     try {
       const saved = await createSavedFilter(projectId, {
         name,

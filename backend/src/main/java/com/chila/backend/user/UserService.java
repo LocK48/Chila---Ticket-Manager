@@ -12,6 +12,10 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.chila.backend.verification.EmailVerificationPurpose;
+import com.chila.backend.verification.EmailVerificationService;
+import com.chila.backend.verification.PasswordChangeRequest;
+import com.chila.backend.verification.VerificationResult;
 
 @Service
 public class UserService {
@@ -20,10 +24,12 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailVerificationService emailVerification;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, EmailVerificationService emailVerification) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.emailVerification = emailVerification;
     }
 
     @Transactional
@@ -37,6 +43,7 @@ public class UserService {
         if (userRepository.existsByEmail(email)) {
             throw new DuplicateEmailException();
         }
+        requireValidCode(emailVerification.verify(email, EmailVerificationPurpose.REGISTRATION, null, request.verificationCode()));
 
         UserEntity user = new UserEntity(email, passwordEncoder.encode(request.password()), displayName);
         try {
@@ -57,6 +64,31 @@ public class UserService {
         UserEntity user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
         user.setDisplayName(request.displayName().trim());
         return toResponse(user);
+    }
+
+    @Transactional
+    public void requestPasswordChangeCode(UUID userId) {
+        UserEntity user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+        emailVerification.requestPasswordChangeCode(user);
+    }
+
+    @Transactional
+    public void changePassword(UUID userId, PasswordChangeRequest request) {
+        if (request.newPassword().getBytes(StandardCharsets.UTF_8).length > BCRYPT_MAX_PASSWORD_BYTES)
+            throw new InvalidInputException("newPassword", "Password must be no more than 72 UTF-8 bytes.");
+        UserEntity user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+        requireValidCode(emailVerification.verify(user.getEmail(), EmailVerificationPurpose.PASSWORD_CHANGE,
+                user, request.verificationCode()));
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+    }
+
+    private static void requireValidCode(VerificationResult result) {
+        if (result != VerificationResult.VALID) {
+            String message = result == VerificationResult.TOO_MANY_ATTEMPTS
+                    ? "Too many incorrect verification attempts. Request a new code."
+                    : "The verification code is invalid, expired, or already used.";
+            throw new InvalidInputException("verificationCode", message);
+        }
     }
 
     private UserResponse toResponse(UserEntity user) {

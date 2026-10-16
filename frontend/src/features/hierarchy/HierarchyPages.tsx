@@ -58,12 +58,10 @@ export function EpicsPage({
     if (!selected) {
       return;
     }
-    void Promise.resolve().then(() => listEpicIssues(
-      project.id,
-      selected.id,
-      status || undefined,
-      search,
-    ))
+    void Promise.resolve()
+      .then(() =>
+        listEpicIssues(project.id, selected.id, status || undefined, search),
+      )
       .then(setIssues)
       .catch((e) => setError(message(e, "Could not load epic issues.")));
   }, [project.id, search, selected, status]);
@@ -433,12 +431,24 @@ export function ReleasesPage({
       )}
       <section className="detail-card">
         <h3>Epic workstreams</h3>
-        <p className="member-note">Epics show live completion progress. Epic date scheduling can be added when the roadmap requires it.</p>
+        <p className="member-note">
+          Epics show live completion progress. Epic date scheduling can be added
+          when the roadmap requires it.
+        </p>
         {epics.map((epic) => (
-          <Link className="epic-timeline-row" key={epic.id} to={`/workspaces/${project.workspaceId}/projects/${project.id}/epics`}>
-            <span className="epic-color-dot" style={{ background: epic.color }} />
+          <Link
+            className="epic-timeline-row"
+            key={epic.id}
+            to={`/workspaces/${project.workspaceId}/projects/${project.id}/epics`}
+          >
+            <span
+              className="epic-color-dot"
+              style={{ background: epic.color }}
+            />
             <strong>{epic.name}</strong>
-            <span>{epic.completedIssues}/{epic.totalIssues} complete</span>
+            <span>
+              {epic.completedIssues}/{epic.totalIssues} complete
+            </span>
           </Link>
         ))}
         {!epics.length && <p className="empty-copy">No epics to show.</p>}
@@ -446,12 +456,22 @@ export function ReleasesPage({
       <section className="detail-card">
         <h3>Issue due dates</h3>
         {dueIssues?.items.map((issue) => (
-          <Link className="hierarchy-issue-row" key={issue.id} to={`/workspaces/${project.workspaceId}/issues/${issue.issueKey}`}>
-            <strong>{issue.issueKey}</strong><span>{issue.title}</span><small>{issue.dueDate}</small>
+          <Link
+            className="hierarchy-issue-row"
+            key={issue.id}
+            to={`/workspaces/${project.workspaceId}/issues/${issue.issueKey}`}
+          >
+            <strong>{issue.issueKey}</strong>
+            <span>{issue.title}</span>
+            <small>{issue.dueDate}</small>
           </Link>
         ))}
-        {dueIssues && !dueIssues.items.length && <p className="empty-copy">No issue due dates are scheduled.</p>}
-        {Boolean(dueIssues?.totalPages && dueIssues.totalPages > 1) && <p className="member-note">Showing the first 100 due dates.</p>}
+        {dueIssues && !dueIssues.items.length && (
+          <p className="empty-copy">No issue due dates are scheduled.</p>
+        )}
+        {Boolean(dueIssues?.totalPages && dueIssues.totalPages > 1) && (
+          <p className="member-note">Showing the first 100 due dates.</p>
+        )}
       </section>
       <div className="release-timeline">
         {releases.map((item) => (

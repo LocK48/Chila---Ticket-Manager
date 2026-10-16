@@ -85,6 +85,7 @@ public class SecurityConfig {
                                 "/api/v1/health",
                                 "/api/v1/auth/csrf",
                                 "/api/v1/auth/register",
+                                "/api/v1/auth/registration-otp",
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/logout",
                                 "/actuator/health",
