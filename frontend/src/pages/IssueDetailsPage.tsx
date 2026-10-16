@@ -296,7 +296,15 @@ export function IssueDetailsPage() {
           </dl>
         </section>
       )}
-      {!editing && <IssueHierarchyPanel workspaceId={workspaceId} project={project} issue={issue} writable={canEdit && !issue.archivedAt && project.status === "ACTIVE"} onIssue={setIssue} />}
+      {!editing && (
+        <IssueHierarchyPanel
+          workspaceId={workspaceId}
+          project={project}
+          issue={issue}
+          writable={canEdit && !issue.archivedAt && project.status === "ACTIVE"}
+          onIssue={setIssue}
+        />
+      )}
       <IssueCollaboration
         issueId={issue.id}
         writable={!issue.archivedAt && project.status === "ACTIVE"}

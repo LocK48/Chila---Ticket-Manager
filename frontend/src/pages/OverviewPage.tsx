@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ApiError, listIssues, listProjects, type Issue, type Project } from '../auth/api'
+import { ApiError, listIssues, listProjects, listWorkspaceMembers, type Issue, type Project } from '../auth/api'
 import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyState, ErrorState, LoadingState } from '../components/ui/StateMessage'
 import { useAppLayout } from '../layouts/app-layout-context'
@@ -8,6 +8,7 @@ import { useAppLayout } from '../layouts/app-layout-context'
 export function OverviewPage() {
   const { activeWorkspace } = useAppLayout()
   const [projects, setProjects] = useState<Project[]>([])
+  const [memberCount, setMemberCount] = useState(0)
   const [recentIssues, setRecentIssues] = useState<Issue[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -16,11 +17,14 @@ export function OverviewPage() {
     if (!workspaceId) return
     setLoading(true); setError('')
     try {
-      const projectItems = await listProjects(workspaceId)
+      const [projectItems, members] = await Promise.all([
+        listProjects(workspaceId),
+        listWorkspaceMembers(workspaceId),
+      ])
       const pages = await Promise.all(projectItems.map((project) => listIssues(project.id, { page: 0, size: 100, sort: 'createdAt', direction: 'desc' })))
       const issues = pages.flatMap((page) => page.items)
         .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)).slice(0, 6)
-      setProjects(projectItems); setRecentIssues(issues)
+      setProjects(projectItems); setMemberCount(members.length); setRecentIssues(issues)
     } catch (cause) { setError(cause instanceof ApiError ? cause.message : 'Could not load this workspace overview.') }
     finally { setLoading(false) }
   }, [workspaceId])
@@ -34,7 +38,7 @@ export function OverviewPage() {
     <section className="overview-stats" aria-label="Workspace summary">
       <article className="overview-stat"><span className="overview-stat-icon">▦</span><div><strong>{projects.length}</strong><span>Projects</span></div></article>
       <article className="overview-stat"><span className="overview-stat-icon">◉</span><div><strong>{projects.filter((project) => project.status === 'ACTIVE').length}</strong><span>Active projects</span></div></article>
-      <article className="overview-stat overview-stat-note"><span>Workspace members can see projects and issues according to their role.</span></article>
+      <article className="overview-stat"><span className="overview-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" /><path d="M3.5 19v-1.2A4.8 4.8 0 0 1 8.3 13h1.4a4.8 4.8 0 0 1 4.8 4.8V19M16 5.3a3 3 0 0 1 0 5.8M17 13.2a4.8 4.8 0 0 1 3.5 4.6V19" /></svg></span><div><strong>{memberCount}</strong><span>{memberCount === 1 ? 'Member' : 'Members'}</span></div></article>
     </section>
     <section className="overview-section">
       <div className="section-heading"><div><h2>Projects</h2><p className="subtle">Projects in this workspace.</p></div><Link className="text-action" to={`/workspaces/${workspaceId}/projects`}>All projects</Link></div>
