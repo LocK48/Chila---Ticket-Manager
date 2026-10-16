@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -641,6 +642,62 @@ class BackendApplicationTests {
 		mockMvc.perform(get("/api/v1/projects/{projectId}/sprints/{sprintId}/issues", projectId, thirdSprintId).cookie(owner))
 				.andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(1))
 				.andExpect(jsonPath("$.items[0].id").value(secondIssueId));
+	}
+
+	@Test
+	void epicsParentsLinksAndReleasesRespectProjectBoundaries() throws Exception {
+		registerUser();
+		Cookie owner = loginAndGetAccessCookie();
+		String workspaceId = createWorkspaceFor(owner);
+		String projectId = createProjectFor(owner, workspaceId);
+		String firstId = createIssue(owner, projectId, "Epic parent");
+		String secondId = createIssue(owner, projectId, "Child task");
+		String epicJson = "{\"name\":\"Checkout\",\"summary\":\"Checkout improvements\",\"color\":\"#6554C0\"}";
+		MvcResult epicResult = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{id}/epics", projectId)
+				.contentType(MediaType.APPLICATION_JSON).content(epicJson), owner))
+				.andExpect(status().isCreated()).andReturn();
+		String epicId = objectMapper.readTree(epicResult.getResponse().getContentAsString()).get("id").asText();
+		String releaseJson = "{\"name\":\"1.0\",\"description\":\"First release\",\"startDate\":\"2027-01-01\",\"releaseDate\":\"2027-01-31\",\"state\":\"UNRELEASED\"}";
+		MvcResult releaseResult = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{id}/releases", projectId)
+				.contentType(MediaType.APPLICATION_JSON).content(releaseJson), owner))
+				.andExpect(status().isCreated()).andReturn();
+		String releaseId = objectMapper.readTree(releaseResult.getResponse().getContentAsString()).get("id").asText();
+
+		mockMvc.perform(authenticatedCsrfRequest(put("/api/v1/issues/{id}/epic", firstId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"id\":\"" + epicId + "\"}"), owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.epicId").value(epicId));
+		mockMvc.perform(authenticatedCsrfRequest(put("/api/v1/issues/{id}/release", firstId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"id\":\"" + releaseId + "\"}"), owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.releaseId").value(releaseId));
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/issues/{id}", firstId)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"title\":\"Epic parent\",\"description\":null,\"type\":\"TASK\","
+						+ "\"status\":\"TODO\",\"priority\":\"MEDIUM\",\"assigneeId\":null,\"dueDate\":\"2027-01-12\"}"), owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.dueDate").value("2027-01-12"));
+		mockMvc.perform(get("/api/v1/projects/{id}/timeline/due-issues", projectId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(firstId));
+		mockMvc.perform(authenticatedCsrfRequest(put("/api/v1/issues/{id}/parent", secondId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"id\":\"" + firstId + "\"}"), owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.parentIssueId").value(firstId));
+		mockMvc.perform(authenticatedCsrfRequest(put("/api/v1/issues/{id}/parent", firstId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"id\":\"" + secondId + "\"}"), owner))
+				.andExpect(status().isBadRequest());
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/issues/{id}/links", firstId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"targetIssueId\":\"" + secondId + "\",\"type\":\"BLOCKS\"}"), owner))
+				.andExpect(status().isCreated());
+		mockMvc.perform(get("/api/v1/issues/{id}/relationships", firstId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.children[0].id").value(secondId))
+				.andExpect(jsonPath("$.links[0].type").value("BLOCKS"));
+		mockMvc.perform(get("/api/v1/projects/{id}/epics/{epicId}/issues", projectId, epicId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(firstId));
+		mockMvc.perform(get("/api/v1/projects/{id}/releases", projectId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$[0].issueCount").value(1));
+
+		String otherProjectId = createProjectFor(owner, workspaceId);
+		String foreignIssueId = createIssue(owner, otherProjectId, "Foreign issue");
+		mockMvc.perform(authenticatedCsrfRequest(put("/api/v1/issues/{id}/epic", foreignIssueId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"id\":\"" + epicId + "\"}"), owner))
+				.andExpect(status().isNotFound());
 	}
 
 	private String createIssue(Cookie owner, String projectId, String title) throws Exception {

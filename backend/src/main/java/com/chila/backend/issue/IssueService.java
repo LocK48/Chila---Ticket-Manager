@@ -103,6 +103,17 @@ public class IssueService {
                 results.getNumber(), results.getSize(), results.getTotalElements(), results.getTotalPages());
     }
 
+    @Transactional(readOnly = true)
+    public IssuePageResponse dueIssues(UUID actorId, UUID projectId, int page, int size) {
+        ProjectEntity project = requireProject(projectId);
+        requireWorkspaceMember(project, actorId);
+        if (page < 0 || size < 1 || size > 100) throw new InvalidInputException("page", "Invalid page or size.");
+        Page<IssueEntity> results = issueRepository.findByProject_IdAndDueDateIsNotNullAndArchivedAtIsNull(
+                projectId, PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "dueDate").and(Sort.by("id"))));
+        return new IssuePageResponse(results.getContent().stream().map(IssueService::response).toList(),
+                results.getNumber(), results.getSize(), results.getTotalElements(), results.getTotalPages());
+    }
+
     @Transactional
     public IssueResponse assignSprint(UUID actorId, UUID issueId, AssignSprintRequest request) {
         IssueEntity issue = requireIssue(issueId);
@@ -436,12 +447,15 @@ public class IssueService {
         return StringUtils.hasText(description) ? description.trim() : null;
     }
 
-    private static IssueResponse response(IssueEntity issue) {
+    public static IssueResponse response(IssueEntity issue) {
         UserEntity reporter = issue.getReporter();
         UserEntity assignee = issue.getAssignee();
         String projectKey = issue.getProject().getKey();
         return new IssueResponse(issue.getId(), issue.getProject().getId(),
-                issue.getSprint() == null ? null : issue.getSprint().getId(), projectKey,
+                issue.getSprint() == null ? null : issue.getSprint().getId(),
+                issue.getEpic() == null ? null : issue.getEpic().getId(),
+                issue.getParentIssue() == null ? null : issue.getParentIssue().getId(),
+                issue.getRelease() == null ? null : issue.getRelease().getId(), projectKey,
                 projectKey + "-" + issue.getIssueNumber(), issue.getIssueNumber(),
                 issue.getTitle(), issue.getDescription(), issue.getType(), issue.getStatus(), issue.getPriority(),
                 reporter.getId(), reporter.getDisplayName(), assignee == null ? null : assignee.getId(),

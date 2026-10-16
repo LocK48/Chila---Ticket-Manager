@@ -122,7 +122,28 @@ public interface IssueRepository extends JpaRepository<IssueEntity, UUID> {
 
     List<IssueEntity> findByProject_IdAndSprint_IdAndArchivedAtIsNull(UUID projectId, UUID sprintId);
 
+    Page<IssueEntity> findByProject_IdAndDueDateIsNotNullAndArchivedAtIsNull(UUID projectId, Pageable pageable);
+
     List<IssueEntity> findByIdInAndProject_Id(List<UUID> ids, UUID projectId);
+
+    List<IssueEntity> findByParentIssue_IdAndArchivedAtIsNullOrderByCreatedAtAsc(UUID parentIssueId, Pageable pageable);
+
+    @Query("select count(i) from IssueEntity i where i.epic.id = :epicId and i.archivedAt is null")
+    long countActiveByEpicId(@Param("epicId") UUID epicId);
+
+    @Query("select count(i) from IssueEntity i where i.epic.id = :epicId and i.status = com.chila.backend.issue.IssueStatus.DONE and i.archivedAt is null")
+    long countDoneByEpicId(@Param("epicId") UUID epicId);
+
+    @Query("select count(i) from IssueEntity i where i.release.id = :releaseId and i.archivedAt is null")
+    long countActiveByReleaseId(@Param("releaseId") UUID releaseId);
+
+    @Query(value = "select i from IssueEntity i join fetch i.project p join fetch p.workspace join fetch i.reporter left join fetch i.assignee "
+            + "where p.id = :projectId and i.epic.id = :epicId and i.archivedAt is null "
+            + "and (:status is null or i.status = :status) and (:search = '%' or lower(i.title) like :search "
+            + "or lower(concat(concat(p.key, '-'), cast(i.issueNumber as string))) like :search)",
+            countQuery = "select count(i) from IssueEntity i join i.project p where p.id = :projectId and i.epic.id = :epicId and i.archivedAt is null and (:status is null or i.status = :status) and (:search = '%' or lower(i.title) like :search or lower(concat(concat(p.key, '-'), cast(i.issueNumber as string))) like :search)")
+    Page<IssueEntity> searchEpicIssues(@Param("projectId") UUID projectId, @Param("epicId") UUID epicId,
+            @Param("status") IssueStatus status, @Param("search") String search, Pageable pageable);
 
     @Query("select coalesce(max(i.backlogRank), 0) from IssueEntity i "
             + "where i.project.id = :projectId and i.sprint.id = :sprintId")

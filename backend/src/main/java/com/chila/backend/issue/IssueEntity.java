@@ -6,6 +6,8 @@ import java.util.UUID;
 
 import com.chila.backend.project.ProjectEntity;
 import com.chila.backend.sprint.SprintEntity;
+import com.chila.backend.hierarchy.EpicEntity;
+import com.chila.backend.hierarchy.ReleaseEntity;
 import com.chila.backend.user.UserEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -58,6 +60,18 @@ public class IssueEntity {
 
     @Column(name = "backlog_rank", nullable = false)
     private long backlogRank;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "epic_id")
+    private EpicEntity epic;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_issue_id")
+    private IssueEntity parentIssue;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "release_id")
+    private ReleaseEntity release;
 
     @Column(nullable = false, length = 200)
     private String title;
@@ -119,6 +133,9 @@ public class IssueEntity {
     public long getRankValue() { return rankValue; }
     public SprintEntity getSprint() { return sprint; }
     public long getBacklogRank() { return backlogRank; }
+    public EpicEntity getEpic() { return epic; }
+    public IssueEntity getParentIssue() { return parentIssue; }
+    public ReleaseEntity getRelease() { return release; }
     public String getTitle() { return title; }
     public String getDescription() { return description; }
     public IssueType getType() { return type; }
@@ -159,4 +176,7 @@ public class IssueEntity {
 
     public void assignToSprint(SprintEntity sprint) { this.sprint = sprint; }
     public void setBacklogRank(long backlogRank) { this.backlogRank = backlogRank; }
+    public void assignEpic(EpicEntity epic) { this.epic = epic; }
+    public void setParentIssue(IssueEntity parentIssue) { this.parentIssue = parentIssue; }
+    public void assignRelease(ReleaseEntity release) { this.release = release; }
 }

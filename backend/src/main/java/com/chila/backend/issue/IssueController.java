@@ -68,6 +68,12 @@ public class IssueController {
                 unassigned, search, page, size);
     }
 
+    @GetMapping("/api/v1/projects/{projectId}/timeline/due-issues")
+    public IssuePageResponse dueIssues(JwtAuthenticationToken authentication, @PathVariable UUID projectId,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "100") int size) {
+        return issueService.dueIssues(userId(authentication), projectId, page, size);
+    }
+
     @GetMapping("/api/v1/issues/{issueId}")
     public IssueResponse get(JwtAuthenticationToken authentication, @PathVariable UUID issueId) {
         return issueService.get(userId(authentication), issueId);

@@ -7,6 +7,7 @@ import java.util.UUID;
 import com.chila.backend.common.api.InvalidInputException;
 import com.chila.backend.issue.IssueEntity;
 import com.chila.backend.issue.IssueRepository;
+import com.chila.backend.issue.IssueService;
 import com.chila.backend.issue.IssueStatus;
 import com.chila.backend.issue.IssuePriority;
 import com.chila.backend.issue.IssueType;
@@ -201,13 +202,7 @@ public class SprintService {
                 StringUtils.hasText(search) ? "%" + search.trim().toLowerCase() + "%" : "%",
                 PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "rankValue").and(Sort.by("id"))));
         List<IssueResponse> items = results.getContent().stream()
-                .map(issue -> new IssueResponse(issue.getId(), projectId, sprintId, project.getKey(),
-                        project.getKey() + "-" + issue.getIssueNumber(), issue.getIssueNumber(), issue.getTitle(),
-                        issue.getDescription(), issue.getType(), issue.getStatus(), issue.getPriority(),
-                        issue.getReporter().getId(), issue.getReporter().getDisplayName(),
-                        issue.getAssignee() == null ? null : issue.getAssignee().getId(),
-                        issue.getAssignee() == null ? null : issue.getAssignee().getDisplayName(), issue.getDueDate(),
-                        issue.getArchivedAt(), issue.getCreatedAt(), issue.getUpdatedAt()))
+                .map(IssueService::response)
                 .toList();
         return new IssuePageResponse(items, results.getNumber(), results.getSize(), results.getTotalElements(), results.getTotalPages());
     }
