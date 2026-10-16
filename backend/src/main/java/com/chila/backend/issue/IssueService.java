@@ -33,6 +33,7 @@ import com.chila.backend.workspace.WorkspaceAccessDeniedException;
 import com.chila.backend.workflow.WorkflowService;
 import com.chila.backend.report.SprintReportEventKind;
 import com.chila.backend.report.SprintReportEventService;
+import com.chila.backend.automation.AutomationService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -54,6 +55,7 @@ public class IssueService {
     private final SprintRepository sprintRepository;
     private final WorkflowService workflowService;
     private final SprintReportEventService sprintReportEvents;
+    private final AutomationService automationService;
 
     public IssueService(
             IssueRepository issueRepository,
@@ -64,7 +66,8 @@ public class IssueService {
             NotificationService notificationService,
             SprintRepository sprintRepository,
             WorkflowService workflowService,
-            SprintReportEventService sprintReportEvents) {
+            SprintReportEventService sprintReportEvents,
+            AutomationService automationService) {
         this.issueRepository = issueRepository;
         this.projectRepository = projectRepository;
         this.membershipRepository = membershipRepository;
@@ -74,6 +77,7 @@ public class IssueService {
         this.sprintRepository = sprintRepository;
         this.workflowService = workflowService;
         this.sprintReportEvents = sprintReportEvents;
+        this.automationService = automationService;
     }
 
     @Transactional
@@ -294,7 +298,10 @@ public class IssueService {
         issue.update(request.title().trim(), normalizeDescription(request.description()), request.type(),
                 request.status(), request.priority(), assignee, request.dueDate());
         issue.setRankValue(rank);
-        if (previousStatus != issue.getStatus()) sprintReportEvents.statusChanged(issue);
+        if (previousStatus != issue.getStatus()) {
+            sprintReportEvents.statusChanged(issue);
+            automationService.issueStatusChanged(issue);
+        }
         if (assignee != null && !assignee.getId().equals(previousAssigneeId)) {
             notificationService.onAssignment(issue, assignee, actorId);
         }
@@ -339,6 +346,7 @@ public class IssueService {
         UserEntity actor = userRepository.findById(actorId).orElseThrow(UserNotFoundException::new);
         if (oldStatus != request.status()) {
             activityService.record(issue, actor, "UPDATED", "status", oldStatus.name(), request.status().name());
+            automationService.issueStatusChanged(issue);
         }
         if (oldRank != newRank || oldStatus != request.status()) {
             activityService.record(issue, actor, "REORDERED", "rank", Long.toString(oldRank), Long.toString(newRank));

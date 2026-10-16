@@ -74,6 +74,16 @@ export type SprintReport = {
   completionIssues: { issueId: string; issueKey: string; issueTitle: string; issueStatus: IssueStatus }[];
 };
 export type IssuePriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+export type AutomationAction = "NOTIFY_REPORTER" | "NOTIFY_ASSIGNEE";
+export type AutomationRule = {
+  id: string; projectId: string; name: string; enabled: boolean; targetStatus: IssueStatus;
+  action: AutomationAction; createdAt: string; updatedAt: string;
+};
+export type AutomationRuleInput = Pick<AutomationRule, "name" | "enabled" | "targetStatus" | "action">;
+export type AutomationExecution = {
+  id: string; ruleId: string | null; ruleName: string; issueKey: string;
+  outcome: "SUCCEEDED" | "SKIPPED"; detail: string; executedAt: string;
+};
 export type Issue = {
   id: string;
   projectId: string;
@@ -500,6 +510,21 @@ export async function getWorkflow(projectId: string): Promise<Workflow> {
 }
 export async function updateWorkflow(projectId: string, transitions: WorkflowTransition[]): Promise<Workflow> {
   return request<Workflow>(`/api/v1/projects/${encodeURIComponent(projectId)}/workflow/transitions`, { method: "PUT", body: JSON.stringify(transitions) });
+}
+export async function listAutomationRules(projectId: string): Promise<AutomationRule[]> {
+  return request<AutomationRule[]>(`/api/v1/projects/${encodeURIComponent(projectId)}/automation/rules`);
+}
+export async function createAutomationRule(projectId: string, input: AutomationRuleInput): Promise<AutomationRule> {
+  return request<AutomationRule>(`/api/v1/projects/${encodeURIComponent(projectId)}/automation/rules`, { method: "POST", body: JSON.stringify(input) });
+}
+export async function updateAutomationRule(projectId: string, ruleId: string, input: AutomationRuleInput): Promise<AutomationRule> {
+  return request<AutomationRule>(`/api/v1/projects/${encodeURIComponent(projectId)}/automation/rules/${encodeURIComponent(ruleId)}`, { method: "PUT", body: JSON.stringify(input) });
+}
+export async function deleteAutomationRule(projectId: string, ruleId: string): Promise<void> {
+  return request<void>(`/api/v1/projects/${encodeURIComponent(projectId)}/automation/rules/${encodeURIComponent(ruleId)}`, { method: "DELETE" });
+}
+export async function listAutomationExecutions(projectId: string): Promise<AutomationExecution[]> {
+  return request<AutomationExecution[]>(`/api/v1/projects/${encodeURIComponent(projectId)}/automation/executions`);
 }
 export async function listBacklog(
   projectId: string,

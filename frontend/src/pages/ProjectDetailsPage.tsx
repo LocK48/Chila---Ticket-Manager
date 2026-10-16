@@ -10,6 +10,11 @@ import {
   ApiError,
   getProjectDashboard,
   getWorkflow,
+  listAutomationRules,
+  listAutomationExecutions,
+  createAutomationRule,
+  updateAutomationRule,
+  deleteAutomationRule,
   listProjects,
   listWorkspaceMembers,
   updateProject,
@@ -19,6 +24,8 @@ import {
   type IssueStatus,
   type WorkflowTransition,
   type ProjectDashboard,
+  type AutomationRule,
+  type AutomationExecution,
 } from "../auth/api";
 import { IssuesPanel } from "../features/issues/IssuesPanel";
 import { EpicsPage, ReleasesPage } from "../features/hierarchy/HierarchyPages";
@@ -325,8 +332,62 @@ export function ProjectSettingsTab() {
         Back to projects
       </Link>
       <WorkflowSettings projectId={project.id} />
+      <AutomationSettings projectId={project.id} />
     </>
   );
+}
+
+function AutomationSettings({ projectId }: { projectId: string }) {
+  const [rules, setRules] = useState<AutomationRule[]>([]);
+  const [executions, setExecutions] = useState<AutomationExecution[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const statuses: IssueStatus[] = ["TODO", "IN_PROGRESS", "IN_REVIEW", "DONE"];
+  const load = useCallback(async () => {
+    setError("");
+    try {
+      const [nextRules, nextExecutions] = await Promise.all([listAutomationRules(projectId), listAutomationExecutions(projectId)]);
+      setRules(nextRules); setExecutions(nextExecutions);
+    } catch (cause) { setError(cause instanceof ApiError ? cause.message : "Could not load automation rules."); }
+  }, [projectId]);
+  useEffect(() => { void Promise.resolve().then(load); }, [load]);
+  async function save(event: FormEvent<HTMLFormElement>, rule?: AutomationRule) {
+    event.preventDefault(); const form = event.currentTarget; const data = new FormData(form);
+    setBusy(true); setError(""); setMessage("");
+    const input = { name: String(data.get("name")).trim(), enabled: data.get("enabled") === "on", targetStatus: String(data.get("targetStatus")) as IssueStatus, action: String(data.get("action")) as "NOTIFY_REPORTER" | "NOTIFY_ASSIGNEE" };
+    try {
+      if (rule) await updateAutomationRule(projectId, rule.id, input);
+      else { await createAutomationRule(projectId, input); form.reset(); }
+      setMessage(rule ? "Automation rule saved." : "Automation rule created."); await load();
+    } catch (cause) { setError(cause instanceof ApiError ? cause.message : "Could not save the automation rule."); }
+    finally { setBusy(false); }
+  }
+  async function remove(rule: AutomationRule) {
+    setBusy(true); setError(""); setMessage("");
+    try { await deleteAutomationRule(projectId, rule.id); setMessage("Automation rule deleted. Its execution history is retained."); await load(); }
+    catch (cause) { setError(cause instanceof ApiError ? cause.message : "Could not delete the automation rule."); }
+    finally { setBusy(false); }
+  }
+  return <section className="detail-card automation-settings">
+    <div><h2>Automation rules</h2><p className="subtle">When an issue enters a status, notify its reporter or assignee. Notifications cannot trigger more rules.</p></div>
+    {error && <p className="form-error" role="alert">{error}</p>}{message && <p className="notice" role="status">{message}</p>}
+    <form className="automation-form" onSubmit={(event) => void save(event)}>
+      <label>Rule name<input name="name" required maxLength={100} placeholder="Notify reporter when work is done" /></label>
+      <label>When status becomes<select name="targetStatus" defaultValue="DONE">{statuses.map((status) => <option key={status} value={status}>{status.replaceAll("_", " ").toLowerCase()}</option>)}</select></label>
+      <label>Notify<select name="action" defaultValue="NOTIFY_REPORTER"><option value="NOTIFY_REPORTER">Reporter</option><option value="NOTIFY_ASSIGNEE">Assignee</option></select></label>
+      <label className="automation-enabled"><input type="checkbox" name="enabled" defaultChecked /> Enabled</label>
+      <button className="primary-button compact" disabled={busy}>Create rule</button>
+    </form>
+    <div className="automation-rule-list">{rules.map((rule) => <form className="automation-rule" key={rule.id} onSubmit={(event) => void save(event, rule)}>
+      <label>Rule name<input name="name" required maxLength={100} defaultValue={rule.name} key={`${rule.id}-${rule.updatedAt}`} /></label>
+      <label>Status<select name="targetStatus" defaultValue={rule.targetStatus}>{statuses.map((status) => <option key={status} value={status}>{status.replaceAll("_", " ").toLowerCase()}</option>)}</select></label>
+      <label>Notify<select name="action" defaultValue={rule.action}><option value="NOTIFY_REPORTER">Reporter</option><option value="NOTIFY_ASSIGNEE">Assignee</option></select></label>
+      <label className="automation-enabled"><input type="checkbox" name="enabled" defaultChecked={rule.enabled} /> Enabled</label>
+      <div className="automation-actions"><button className="secondary-button compact" disabled={busy}>Save</button><button type="button" className="text-action" disabled={busy} onClick={() => void remove(rule)}>Delete</button></div>
+    </form>)}</div>
+    <div className="automation-history"><h3>Recent executions</h3>{executions.length ? <div className="report-table-wrap"><table className="report-table"><thead><tr><th>Time</th><th>Rule</th><th>Issue</th><th>Result</th><th>Details</th></tr></thead><tbody>{executions.map((item) => <tr key={item.id}><td>{new Date(item.executedAt).toLocaleString()}</td><td>{item.ruleName}</td><td>{item.issueKey}</td><td>{item.outcome.toLowerCase()}</td><td>{item.detail}</td></tr>)}</tbody></table></div> : <p className="subtle">Rule runs will appear here.</p>}</div>
+  </section>;
 }
 
 function WorkflowSettings({ projectId }: { projectId: string }) {

@@ -546,6 +546,45 @@ class BackendApplicationTests {
 	}
 
 	@Test
+	void statusAutomationNotifiesAndRetainsExecutionHistory() throws Exception {
+		registerUser();
+		Cookie owner = loginAndGetAccessCookie();
+		String workspaceId = createWorkspaceFor(owner);
+		String projectId = createProjectFor(owner, workspaceId);
+		String issueId = createIssue(owner, projectId, "Automation target");
+		String ruleJson = "{\"name\":\"Notify reporter on progress\",\"enabled\":true,"
+				+ "\"targetStatus\":\"IN_PROGRESS\",\"action\":\"NOTIFY_REPORTER\"}";
+		MvcResult created = mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{projectId}/automation/rules", projectId)
+				.contentType(MediaType.APPLICATION_JSON).content(ruleJson), owner))
+				.andExpect(status().isCreated()).andExpect(jsonPath("$.enabled").value(true)).andReturn();
+		String ruleId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asText();
+		mockMvc.perform(registrationRequest("{\"email\":\"automation-member@example.com\","
+				+ "\"password\":\"long-enough-password\",\"displayName\":\"Automation Member\"}"))
+				.andExpect(status().isCreated());
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/workspaces/{id}/members", workspaceId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"automation-member@example.com\",\"role\":\"MEMBER\"}"), owner))
+				.andExpect(status().isCreated());
+		Cookie member = loginAndGetAccessCookie("automation-member@example.com");
+		mockMvc.perform(authenticatedCsrfRequest(post("/api/v1/projects/{projectId}/automation/rules", projectId)
+				.contentType(MediaType.APPLICATION_JSON).content(ruleJson), member)).andExpect(status().isForbidden());
+		mockMvc.perform(authenticatedCsrfRequest(patch("/api/v1/issues/{id}/position", issueId)
+				.contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"IN_PROGRESS\",\"beforeIssueId\":null}"), owner))
+				.andExpect(status().isOk());
+		mockMvc.perform(get("/api/v1/users/me/notifications").param("size", "50").cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.items[0].eventType").value("AUTOMATION"));
+		mockMvc.perform(get("/api/v1/projects/{projectId}/automation/executions", projectId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$[0].outcome").value("SUCCEEDED"))
+				.andExpect(jsonPath("$[0].issueKey").isNotEmpty());
+		mockMvc.perform(get("/api/v1/projects/{projectId}/automation/executions", projectId).cookie(member))
+				.andExpect(status().isOk()).andExpect(jsonPath("$[0].ruleName").value("Notify reporter on progress"));
+		mockMvc.perform(authenticatedCsrfRequest(delete("/api/v1/projects/{projectId}/automation/rules/{ruleId}", projectId, ruleId), owner))
+				.andExpect(status().isOk());
+		mockMvc.perform(get("/api/v1/projects/{projectId}/automation/executions", projectId).cookie(owner))
+				.andExpect(status().isOk()).andExpect(jsonPath("$[0].ruleId").doesNotExist())
+				.andExpect(jsonPath("$[0].ruleName").value("Notify reporter on progress"));
+	}
+
+	@Test
 	void sprintLifecyclePlansIssuesEnforcesRolesAndPreservesClosedHistory() throws Exception {
 		registerUser();
 		Cookie owner = loginAndGetAccessCookie();
