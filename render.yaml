@@ -16,7 +16,7 @@ services:
       - key: CHILA_AUTH_COOKIE_SECURE
         value: "true"
       - key: CHILA_AUTH_COOKIE_SAME_SITE
-        value: "None"
+        value: Lax
       - key: SPRING_MAIL_HOST
         sync: false
       - key: SPRING_MAIL_PORT

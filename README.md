@@ -144,10 +144,10 @@ The repository includes a backend Docker image definition at [backend/Dockerfile
    - `CHILA_CORS_ALLOWED_ORIGIN`: the exact production Vercel origin, including `https://` and no trailing slash, for example `https://chila.example.com`.
    - SMTP values (`SPRING_MAIL_HOST`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`) for email OTP. Render sets `CHILA_AUTH_COOKIE_SECURE=true` and `CHILA_AUTH_COOKIE_SAME_SITE=None` through the Blueprint.
 3. Wait for the Render health check to pass, then note the service URL (`https://<service>.onrender.com`).
-4. Add `VITE_API_BASE_URL` in Vercel's Production environment with the Render service URL (no trailing slash), then redeploy. This variable is public frontend configuration, not a secret.
+4. In Vercel's Production environment, remove `VITE_API_BASE_URL` if it is set, then redeploy. The checked-in Vercel rewrite proxies `/api/*` to `https://chila-ticket-manager.onrender.com` so the browser uses same-origin cookies. If your Render service has a different hostname, update the destination in `frontend/vercel.json` before deploying.
 5. Open the deployed frontend and verify signup OTP delivery, login, a page refresh while signed in, and logout. Also check the Render health endpoint at `/api/v1/health`.
 
-The default `vercel.app` and `onrender.com` domains are cross-site. The Blueprint uses secure `SameSite=None` cookies and credentialed CORS for this setup, but browsers or privacy settings that block third-party cookies can still prevent cookie-based login. For the most reliable production setup, attach frontend and API custom domains under the same registrable domain (for example `app.example.com` and `api.example.com`), update `CHILA_CORS_ALLOWED_ORIGIN` to the app origin, and use `CHILA_AUTH_COOKIE_SAME_SITE=Lax`. Keep the frontend and API on HTTPS. Vercel preview deployments use different origins; add a matching backend CORS origin before testing authenticated API calls from a preview.
+The Vercel rewrite keeps API requests and cookies on the frontend origin, which avoids third-party cookie restrictions. `CHILA_CORS_ALLOWED_ORIGIN` should still match the production Vercel origin. Vercel preview deployments use different origins; update the backend CORS origin before testing authenticated API calls from a preview.
 
 ## Configuration
 
